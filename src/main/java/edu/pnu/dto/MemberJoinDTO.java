@@ -33,7 +33,7 @@ public class MemberJoinDTO {
 				.email(email)
 				.phone(phone)
 				.factoryCode(factoryCode)
-				.role(role != null ? role : Role.ROLE_MANAGER) //null값이면 Manger를 지정한다.
+				.role(role != null ? role : Role.ROLE_UNAUTH) //null값이면 Manger를 지정한다.
 				.build();
 	}
 }

@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import edu.pnu.dto.LoginDTO;
 import edu.pnu.dto.MemberJoinDTO;
 import edu.pnu.service.member.MemberJoinService;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +32,7 @@ public class MemberJoinController {
 	}
 	
 	@PostMapping("/join/idsearch")
-	public boolean postIdSearch(@RequestBody MemberJoinDTO dto) {
+	public boolean postIdSearch(@RequestBody LoginDTO dto) {
 		boolean result = memberJoinsvc.postIdSearch(dto.getUserId());
 		if(result) {
 			System.out.println("[경고/오류] : [JoinController][이미 사용 중인 아이디입니다.]" + "\n");

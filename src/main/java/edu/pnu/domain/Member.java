@@ -37,7 +37,7 @@ public class Member {
 	
 	@Builder.Default
 	@Enumerated(EnumType.STRING)
-	private Role role = Role.ROLE_MANAGER; // 허용 범위
+	private Role role = Role.ROLE_UNAUTH; // 허용 범위
 	
 	@Column(name = "factorycode")
 	private int factoryCode; // 공장 코드

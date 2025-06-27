@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -50,6 +51,15 @@ public class SecurityConfig {
 		// Form을 이용한 로그인을 사용하지 않겠다는 명시적 설정
 		// UsernamePasswordAuthenticationFilter가 현재 없지만 명시적 제거
 		http.formLogin(frmLogin -> frmLogin.disable());
+		
+		// 인가되지 않은 사용자는 /unauth로 이동 -> JWT에서는 잘 안된다고 함.
+		http.exceptionHandling(ex -> ex
+			    .accessDeniedHandler((request, response, accessDeniedException) -> {
+			        response.setStatus(HttpStatus.FORBIDDEN.value());
+			        response.setContentType("application/json");
+			        response.getWriter().write("{\"message\": \"접근 권한이 없습니다.\"}");
+			    })
+			);
 
 		// Http Basic인증 방식을 사용하지 않겠다는 명시적 설정
 		// BasicAuthenticationFilter가 현재 없지만 명시적 제거
