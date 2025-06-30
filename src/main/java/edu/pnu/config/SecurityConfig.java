@@ -75,7 +75,7 @@ public class SecurityConfig {
 		http.addFilterBefore(new JWTAuthorizationFilter(memberRepository), AuthorizationFilter.class);
 		http.cors(cors -> cors.configurationSource(corsSource()));
 		
-		System.out.println("[성공] : [SecurityConfig] 시큐리티 필터 체인 완성");
+		System.out.println("[성공] : [SecurityConfig] 시큐리티 필터 체인 완성 \n");
 		return http.build();
 	}
 	
@@ -91,7 +91,7 @@ public class SecurityConfig {
 		config.addExposedHeader(HttpHeaders.AUTHORIZATION); // Header에 Authorization을 추가하기 위해서는 필요
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		source.registerCorsConfiguration("/**", config); // 위 설정을 적용할 Rest 서버의 URL 패턴 설정
-		System.out.println("\n [성공] : [SecurityConfig] front 연결 성공 \n");
+		System.out.println("\n[성공] : [SecurityConfig] front 연결 성공 \n");
 		return source;
 	}
 
