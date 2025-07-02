@@ -50,7 +50,6 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 		
 		ObjectMapper mapper = new ObjectMapper();
 		
-		 System.out.println("[성공] : [2][JWTAuthenticationFilter] request에서 json 타입의 [username/password]를 읽어서 Member 객체를 생성 \n");
 		
 		try {
 			Member member = mapper.readValue(request.getInputStream(), Member.class);
@@ -58,6 +57,7 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 			Authentication authToken = new UsernamePasswordAuthenticationToken(member.getUserId(), member.getPassword());
 			// 인증 진행 -> UserDetailsService의 loadUserByUsername에서 DB로부터 사용자 정보를 읽어온 뒤
 			// 사용자 입력 정보와 비교한 뒤 자격 증명에 성공하면 Authenticaiton객체를 만들어서 리턴한다.
+			System.out.println("[성공] : [2][JWTAuthenticationFilter] request에서 json 타입의 [username/password]를 읽어서 Member 객체를 생성 \n");
 			
 			return authenticationManager.authenticate(authToken);
 			
@@ -86,11 +86,11 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 		User user = (User)authResult.getPrincipal();
 		
 		
-		System.out.println("[auth] : " + user); // user 객체를 콘솔에 출력해서 확인
+		System.out.println("[유저] : " + user); // user 객체를 콘솔에 출력해서 확인
 		
 		// username으로 JWT를 생성해서 Response Header - Authorization에 담아서 돌려준다.
 		// 이것은 하나의 예시로서 필요에 따라 추가 정보를 담을 수 있다.
-		System.out.println("[진행] : [4][JWTAuthenticationFilter] JWTAuthorizationFilter로 정보 이동 \n");
+		System.out.println("[진행] : [4][JWTAuthenticationFilter] JWTAuthorizationFilter로 정보 이동");
 		
 		//Token에 Role 정보를 담기 위해 객체화 함.
 		String role = user.getAuthorities()

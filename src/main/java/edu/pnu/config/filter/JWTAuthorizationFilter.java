@@ -75,7 +75,7 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
 
 		} catch (Exception e) {
 			// 예외가 발생하면 로그 출력 후 필터 체인 그냥 통과
-			System.out.println("[오류] : [JWTAuthorizationFilter] JWT 오류 발생 " + e.getMessage());
+			System.out.println("[오류] : [4][JWTAuthorizationFilter] JWT 오류 발생 " + e.getMessage());
 			
 			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401
 		    
@@ -92,19 +92,19 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
 		}
 
 		Optional<Member> opt = memberRepository.findByUserId(userId); // 토큰에서 얻은 username으로 DB를 검색해서 사용자를 검색
-		System.out.println("[진행] : [JWTAuthorizationFilter] username(id) 검색 시작");
+		System.out.println("[진행] : [5][JWTAuthorizationFilter] username(id) 검색 시작");
 		if (!opt.isPresent()) { // 사용자가 존재하지 않는다면
 			
 			 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401
 
 			//filterChain.doFilter(request, response); // 필터를 그냥 통과
-			System.out.println("[오류] : [JWTAuthorizationFilter]사용자가 없다.");
+			System.out.println("[오류] : [5][JWTAuthorizationFilter]사용자가 없다.");
 			return;
-		} System.out.println("[진행] : [JWTAuthorizationFilter] 사용자 찾음");
+		} System.out.println("[진행] : [6][JWTAuthorizationFilter] 사용자 찾음");
 		
 
 		Member findmember = opt.get();
-		System.out.println("[진행] : [JWTAuthorizationFilter] ROLE 값: [" + findmember.getRole()+"]");
+		System.out.println("[진행] : [7][JWTAuthorizationFilter] ROLE 값: [" + findmember.getRole()+"]");
 
 
 		try {
@@ -112,12 +112,12 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
 		        AuthorityUtils.createAuthorityList("ROLE_" + findmember.getRole().toString()));
 		    Authentication auth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
 		    SecurityContextHolder.getContext().setAuthentication(auth);
-		    System.out.println("[성공] : [JWTAuthorizationFilter] SecurityContext 등록 완료 \n");
+		    System.out.println("[성공] : [8][JWTAuthorizationFilter] SecurityContext 등록 완료 \n");
 		    filterChain.doFilter(request, response);
-		    System.out.println("[성공] : [JWTAuthorizationFilter] 토큰 확인 완료 \n");
+		    System.out.println("[성공] : [9][JWTAuthorizationFilter] 토큰 확인 완료 \n");
 		} catch (Exception e) {
 		    e.printStackTrace();
-		    System.out.println("[오류] : [JWTAuthorizationFilter] 예외 발생! \n");
+		    System.out.println("[오류] : [9][JWTAuthorizationFilter] 오류 발생! \n");
 		}
 	}
 }

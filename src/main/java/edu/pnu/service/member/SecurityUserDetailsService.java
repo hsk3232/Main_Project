@@ -20,9 +20,13 @@ public class SecurityUserDetailsService  implements UserDetailsService {
 
 	@Override
 	public UserDetails loadUserByUsername(String userId) throws UsernameNotFoundException {
+		System.out.println("\n[진입] : [1][SecurityUserDetailsService] 사용자 검색 진입");
+		
 		Member member = memberRepo.findByUserId(userId)
-				.orElseThrow(() -> new UsernameNotFoundException("[오류] : [SecurityUserDetailsService][사용자 못찾겠다..]" + "\n"));
-
+				.orElseThrow(() -> new UsernameNotFoundException("[오류] : [SecurityUserDetailsService] 사용자 못찾겠다.. \n"));
+		
+		System.out.println("[성공] : [2][SecurityUserDetailsService] 사용자 검색 성공\n");
+		
 		return User.builder()
 				.username(member.getUserId())
 				.password(member.getPassword())
