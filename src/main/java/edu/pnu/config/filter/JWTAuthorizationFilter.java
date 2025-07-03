@@ -100,9 +100,9 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
 			//filterChain.doFilter(request, response); // 필터를 그냥 통과
 			System.out.println("[오류] : [5][JWTAuthorizationFilter]사용자가 없다.");
 			return;
-		} System.out.println("[진행] : [6][JWTAuthorizationFilter] 사용자 찾음");
+		} 
+		System.out.println("[진행] : [6][JWTAuthorizationFilter] 사용자 찾음");
 		
-
 		Member findmember = opt.get();
 		System.out.println("[진행] : [7][JWTAuthorizationFilter] ROLE 값: [" + findmember.getRole()+"]");
 
