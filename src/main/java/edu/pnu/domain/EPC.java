@@ -38,6 +38,7 @@ public class EPC {
     @JoinColumn(name = "productId", referencedColumnName = "productId")
 	private Product product;
 	
+	//1:N 하나의 코드가 여러 개의 이벤트 히스토리를 가짐
 	@OneToMany(mappedBy = "epc", fetch = FetchType.LAZY)
 	@ToString.Exclude
 	private List<EventHistory> eventHistory;
