@@ -1,5 +1,6 @@
 package edu.pnu.domain;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Entity;
@@ -45,5 +46,5 @@ public class EventHistory {
 	private String businessStep;
 	private String eventType;
 	private LocalDateTime eventTime;
-	private LocalDateTime manufactureDate;
+	private LocalDate manufactureDate;
 }
