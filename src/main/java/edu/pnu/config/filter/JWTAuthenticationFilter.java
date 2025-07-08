@@ -1,7 +1,6 @@
 package edu.pnu.config.filter;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
 import java.util.Date;
 
 import org.springframework.http.HttpHeaders;
@@ -17,6 +16,7 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import edu.pnu.Repo.MemberRepository;
 import edu.pnu.domain.Member;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -30,11 +30,13 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 	// 인증 객체, fillter 객체는 컨테이너에 올리지 못함
 	// 따라서 autowired 못함
 	private final AuthenticationManager authenticationManager;
+	private final MemberRepository memberRepo;
 	
 	//생성자 직접 선언
-	public JWTAuthenticationFilter(AuthenticationManager authenticationManager) {
+	public JWTAuthenticationFilter(AuthenticationManager authenticationManager, MemberRepository memberRepo) {
 	        super(authenticationManager);
 	        this.authenticationManager = authenticationManager;
+	        this.memberRepo = memberRepo; // 추가!
 	        // 이 줄이 있어야 /api/public/login으로 POST 요청 시 필터가 동작!
 	        setFilterProcessesUrl("/api/public/login");
 	    }
@@ -56,7 +58,7 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 			// Security에게 자격 증명 요청에 필요한 객체 생성
 			Authentication authToken = new UsernamePasswordAuthenticationToken(member.getUserId(), member.getPassword());
 			// 인증 진행 -> UserDetailsService의 loadUserByUsername에서 DB로부터 사용자 정보를 읽어온 뒤
-			// 사용자 입력 정보와 비교한 뒤 자격 증명에 성공하면 Authenticaiton객체를 만들어서 리턴한다.
+			// 사용자 입력 정보와 비교한 뒤 자격 증명에 성공하면 Authenticaiton객체를 만들어서 리턴한다. 
 			System.out.println("[성공] : [2][JWTAuthenticationFilter] request에서 json 타입의 [username/password]를 읽어서 Member 객체를 생성 \n");
 			
 			return authenticationManager.authenticate(authToken);
@@ -99,11 +101,23 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
                 .map(auth -> auth.getAuthority().replace("ROLE_", "")) // "ROLE_MEMBER" → "MEMBER"
                 .orElse("UNAUTH"); // 혹시 없으면 디폴트
 		
+		// FactoryCode 토큰에 넣기
+		// 1. username 얻기
+		String username = user.getUsername();
+
+		// 2. MemberRepository로 Member 엔티티 가져오기
+		Member member = memberRepo.findByUserId(username)
+		    .orElseThrow(() -> new RuntimeException("Member not found"));
+
+		// 3. factoryCode 꺼내기
+		Long locationId = member.getLocation().getLocationId();
+		
 		
 		String token = JWT.create()
 				.withExpiresAt(new Date(System.currentTimeMillis()+1000*60*100000))
 				.withClaim("userId", user.getUsername()) //token에 넣을 정보
 				.withClaim("role", role)
+				.withClaim("location_id", locationId) // factoryCode
 				.sign(Algorithm.HMAC256("edu.pnu.jwt"));
 		
 		response.addHeader(HttpHeaders.AUTHORIZATION, "Bearer " + token);

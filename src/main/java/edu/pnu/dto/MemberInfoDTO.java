@@ -20,7 +20,7 @@ public class MemberInfoDTO {
 	private String password;
 	private String email;
 	private String phone;
-	private int factoryCode;
+	private Long locationId;
 	private Role role;
 	
 	public static MemberInfoDTO toEntity(Member m) {
@@ -30,7 +30,7 @@ public class MemberInfoDTO {
 				.password(m.getPassword())
 				.email(m.getEmail())
 				.phone(m.getPhone())
-				.factoryCode(m.getFactoryCode())
+				.locationId(m.getLocation().getLocationId())
 				.role(m.getRole())
 				.build();
 	}

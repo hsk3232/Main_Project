@@ -69,8 +69,8 @@ public class SecurityConfig {
 		http.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
 		// 스프링 시큐리티의 필터체인에 작성한 필터를 추가한다. UsernamePasswordAuthenticationFilter를 상속한 필터이므로
-		// 원래 UsernamePasswordAuthenticationFilter가 위치하는 곳에 대신 추가된다.
-		http.addFilter(new JWTAuthenticationFilter(authenticationConfiguration.getAuthenticationManager()));
+		// 원래 UsernamePasswordAuthenticationFilter가 위치하는 곳에 대신 추가된다.  //토큰에 공장 정보 넣기 위해 Repo 주입
+		http.addFilter(new JWTAuthenticationFilter(authenticationConfiguration.getAuthenticationManager(), memberRepository));
 
 		http.addFilterBefore(new JWTAuthorizationFilter(memberRepository), AuthorizationFilter.class);
 		http.cors(cors -> cors.configurationSource(corsSource()));

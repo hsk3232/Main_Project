@@ -2,6 +2,7 @@ package edu.pnu.domain;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -12,6 +13,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -23,6 +25,7 @@ import lombok.ToString;
 @AllArgsConstructor
 @ToString
 @Entity
+@Builder
 @Table(name="eventhistory")
 public class EventHistory {
 	@Id
@@ -31,14 +34,14 @@ public class EventHistory {
 	
 	//N:1 productId와 연결됨
 	@ManyToOne(fetch = FetchType.LAZY) // FK
-    @JoinColumn(name = "epcCode", referencedColumnName = "epcCode")
+    @JoinColumn(name = "epc_code", referencedColumnName = "epc_code")
 	// EventHistory 테이블에 생길 새로운 칼럼명, 참조할 테이블의 PK
 	private EPC epc;
 	
 	
 	//N:1 locationId와 연결됨
 	@ManyToOne(fetch = FetchType.LAZY) // FK
-    @JoinColumn(name = "locationId", referencedColumnName = "locationId")
+    @JoinColumn(name = "location_id", referencedColumnName = "location_id")
 	// EventHistory 테이블에 생길 새로운 칼럼명, 참조할 테이블의 PK
 	private Location location;
 	
@@ -47,4 +50,5 @@ public class EventHistory {
 	private String eventType;
 	private LocalDateTime eventTime;
 	private LocalDate manufactureDate;
+	private LocalDate expiryDate;
 }
