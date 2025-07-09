@@ -2,7 +2,6 @@ package edu.pnu.domain;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -34,14 +33,15 @@ public class EventHistory {
 	
 	//N:1 productId와 연결됨
 	@ManyToOne(fetch = FetchType.LAZY) // FK
-    @JoinColumn(name = "epc_code", referencedColumnName = "epc_code")
+	//@JoinColumn(name = 현재 테이블에 생길 새로운 칼럼명, referenced = 참조할 테이블의 PK)
+    @JoinColumn(name = "epc_code") //MySQL 칼럼 기준
 	// EventHistory 테이블에 생길 새로운 칼럼명, 참조할 테이블의 PK
 	private EPC epc;
 	
 	
 	//N:1 locationId와 연결됨
 	@ManyToOne(fetch = FetchType.LAZY) // FK
-    @JoinColumn(name = "location_id", referencedColumnName = "location_id")
+    @JoinColumn(name = "location_id") //MySQL 칼럼 기준
 	// EventHistory 테이블에 생길 새로운 칼럼명, 참조할 테이블의 PK
 	private Location location;
 	
@@ -51,4 +51,8 @@ public class EventHistory {
 	private LocalDateTime eventTime;
 	private LocalDate manufactureDate;
 	private LocalDate expiryDate;
+	
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "file_id")
+    private Csv fileLog;
 }

@@ -1,5 +1,7 @@
 package edu.pnu.domain;
 
+import java.util.List;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -10,6 +12,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -29,6 +32,7 @@ public class Member {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long memberId; //auto-Increment
 	
+	@Column(name = "user_id", unique = true) //Join시에는 name 써줘야함, FK 참조를 위해서는 unique 키임을 명시해야함.
 	private String userId;
 	
 	private String password; //비밀번호
@@ -41,6 +45,7 @@ public class Member {
 	
 	 // factoryCode 대신 Location 연관관계로 대체!
     @ManyToOne(fetch = FetchType.LAZY)
+    //@JoinColumn(name = 현재 테이블에 생길 새로운 칼럼명, referenced = 참조할 테이블의 PK)
     @JoinColumn(name = "location_id")
     private Location location;
 	

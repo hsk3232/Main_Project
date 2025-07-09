@@ -24,7 +24,8 @@ public class SecurityUserDetailsService  implements UserDetailsService {
 		
 		// [1] DB에서 사용자 정보(Member 엔티티) 조회
 		Member member = memberRepo.findByUserId(userId)
-				.orElseThrow(() -> new UsernameNotFoundException("[오류] : [SecurityUserDetailsService] 사용자 못찾겠다.. \n"));
+				.orElseThrow(() -> new UsernameNotFoundException("[오류] : [SecurityUserDetailsService] 사용자 " + userId + " 못찾겠음 \n"));
+		// UsernameNotFoundException 이 오류는 Spring Security 표준 예외 제공되는 애를 써도 무방함.
 		
 		System.out.println("[성공] : [2][SecurityUserDetailsService] 사용자 검색 성공\n");
 		

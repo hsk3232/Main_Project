@@ -5,7 +5,6 @@ import java.util.Collection;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import edu.pnu.domain.Member;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -20,6 +19,9 @@ import lombok.ToString;
 @ToString
 @Builder
 public class CustomUserDetails implements UserDetails { // Spring Security의 인증 객체로 사용
+	// 객체 직렬화/역직렬화(저장, 네트워크 전송)할 때 클래스 버전이 바뀌어도 같은 객체로 인식할지 체크
+	private static final long serialVersionUID = 1L; 
+	
 	// ========== 실제 데이터 필드들 ==========
 	private String userId; // 로그인 아이디
 	private String password; // 비밀번호

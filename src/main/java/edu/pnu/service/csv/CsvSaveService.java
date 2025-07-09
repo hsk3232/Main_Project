@@ -1,4 +1,4 @@
-package edu.pnu.service.cvs;
+package edu.pnu.service.csv;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -34,7 +34,7 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class CsvFile {
+public class CsvSaveService {
 
 	// --- Repository 주입 (DB와 연동) ---
 	private final ProductRepository productRepo;
@@ -47,7 +47,7 @@ public class CsvFile {
 	 * 행에서 났는지 명확히 표시
 	 */
 
-	public void saveCsv(MultipartFile file, CustomUserDetails user) throws Exception {
+	public void postCsv(MultipartFile file, CustomUserDetails user) throws Exception {
 
 		try (// 1. 파일을 문자 스트림(UTF-8)으로 읽음
 				BufferedReader reader = new BufferedReader(
@@ -94,7 +94,7 @@ public class CsvFile {
 				try {
 					// [1] Location (중복 insert 방지)
 					Long locationId = Long.parseLong(row[colIdx.get("location_id")]);
-					if (!locationId.toString().equals(userLocationId)) {
+					if (!locationId.equals(userLocationId)) {
 			            throw new IllegalArgumentException("해당 공장의 데이터가 아닙니다");
 			        }
 					if (!insertedLocations.contains(locationId)) {
@@ -233,4 +233,5 @@ public class CsvFile {
 			}
 		}
 	}
+
 }
