@@ -55,4 +55,7 @@ public class EventHistory {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "file_id")
     private Csv fileLog;
+    
+    private boolean abnormal;
+    private String abnormalType;
 }

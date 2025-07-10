@@ -1,14 +1,11 @@
 package edu.pnu.domain;
 
-import java.util.List;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -47,9 +44,5 @@ public class EPC {
 	@JoinColumn(name = "epc_product")
 	private Product product;
 	
-//	
-//	//1:N 하나의 EPC가 여러 개의 이벤트 히스토리를 가짐
-//	@OneToMany(mappedBy = "epc", fetch = FetchType.LAZY)
-//	@ToString.Exclude
-//	private List<EventHistory> eventHistory;
+
 }
