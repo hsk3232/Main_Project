@@ -1,12 +1,10 @@
 package edu.pnu.exception;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-
 import java.io.FileNotFoundException;
 
 import org.apache.tomcat.util.http.fileupload.FileUploadException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,34 +18,36 @@ public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
 	
-	// 커스텀 예외 처리
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<String> handleRuntimeException(RuntimeException ex) {
+	// 2. 파일 자체가 아예 존재하지 않을 때(DB/요청/업로드 모두)
+    @ExceptionHandler(CsvFileNotFoundException.class)
+    public ResponseEntity<String> handleCsvFileNotFound(RuntimeException ex) {
         // 로그 남기기 (원하면)
         // log.error("예외 발생!", ex);
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body("에러 발생: " + ex.getMessage());
     }
-
-    @ExceptionHandler(FileNotFoundException.class)
-    public ResponseEntity<String> handleFileNotFound(FileNotFoundException ex) {
+    // 3. 경로나 실제 파일이 없거나 읽기 불가할 때
+    @ExceptionHandler(CsvFilePathNotFoundException.class)
+    public ResponseEntity<String> handleCsvFilePathNotFound(FileNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body("파일을 찾을 수 없습니다: " + ex.getMessage());
     }
-
+    //  4. 파일 접근 권한 예외
     @ExceptionHandler(FileAccessDeniedException.class)
     public ResponseEntity<String> handleAccessDenied(FileAccessDeniedException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body("파일 접근 권한 없음: " + ex.getMessage());
     }
-
+    
+    // 파일 업로드 예외
     @ExceptionHandler(FileUploadException.class)
     public ResponseEntity<String> handleFileUpload(FileUploadException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body("파일 업로드 실패: " + ex.getMessage());
     }
-
+    
+    // CSV 포맷 오류 예외
     @ExceptionHandler(InvalidCsvFormatException.class)
     public ResponseEntity<String> handleInvalidCsv(InvalidCsvFormatException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)

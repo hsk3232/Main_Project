@@ -1,7 +1,6 @@
 package edu.pnu.domain;
 
 import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -16,11 +15,6 @@ import lombok.ToString;
 @ToString
 @Entity
 @Builder
-public class Location {
-	@Id
-	private Long locationId;
-	private String scanLocation;
+public class KPIAnalysis {
 	
-	private double latitude;
-	private double longitude;
 }

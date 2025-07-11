@@ -1,6 +1,8 @@
 package edu.pnu.domain;
 
-import java.util.List;
+import java.time.LocalDateTime;
+
+import org.hibernate.annotations.CreationTimestamp;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -12,7 +14,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -51,5 +52,13 @@ public class Member {
 	
 	private String email;
 	private String phone;
+	
+    @CreationTimestamp
+    @Column(updatable = false, name = "created_at")
+    private LocalDateTime createdAt;
+    
+    private boolean auth;
+    private boolean del;
+    private boolean status;
 	
 }

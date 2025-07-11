@@ -1,6 +1,8 @@
 package edu.pnu.controller.csv;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -38,13 +40,28 @@ public class CsvController {
 	
 	}
 	
-	// 업로드 fileList 조회
+	// 업로드된 file 목록 조회
 	@GetMapping("/upload/filelist")
-	public List<CsvFileListResponseDTO> getFileList(
-			@RequestParam(required = false) Integer page, 
-		    @RequestParam(required = false) String search){
-		List<CsvFileListResponseDTO> list = csvLogService.getFileList(page, search);
-		return list;
+	public Map<String, Object> getFileListByCursor(
+	        @RequestParam(required = false) Long cursor,
+	        @RequestParam(defaultValue = "50") int size,
+	        @RequestParam(required = false) String search) {
+
+	    List<CsvFileListResponseDTO> data = csvLogService.getFileListByCursor(cursor, size, search);
+	    
+	    // nextCursor(다음 커서값) 계산
+	    Long nextCursor = (data.size() == size) ? data.get(data.size() - 1).getFileId() : null;
+	    
+	    //응답으로 보낼 데이터를 담기 위한 Map(딕셔너리) 생성
+	    Map<String, Object> response = new HashMap<>();
+	    
+	    // data라는 이름으로 실제 데이터 리스트(파일 목록) 저장
+	    response.put("data", data);
+	    // 방금 계산한 커서값(또는 null)을 Map에 저장
+	    response.put("nextCursor", nextCursor);
+	    
+	    // 완성된 Map을 응답으로 리턴
+	    return response; 
 	}
 	
 	

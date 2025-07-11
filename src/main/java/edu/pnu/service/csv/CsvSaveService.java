@@ -34,7 +34,7 @@ import edu.pnu.domain.Location;
 import edu.pnu.domain.Member;
 import edu.pnu.domain.Product;
 import edu.pnu.exception.BadRequestException;
-import edu.pnu.exception.FileNotFoundException;
+import edu.pnu.exception.CsvFileNotFoundException;
 import edu.pnu.exception.FileUploadException;
 import edu.pnu.exception.InvalidCsvFormatException;
 import edu.pnu.service.member.CustomUserDetails;
@@ -67,7 +67,10 @@ public class CsvSaveService {
         		.orElseThrow(() -> new RuntimeException("회원 정보 없음"));
 
         // 2. 파일 존재/형식 체크
-        if (file == null || file.isEmpty()) throw new FileNotFoundException("[오류] : [CsvSaveService] 파일을 찾지 못했음");
+        // 2-1. 파일 자체가 없는 경우
+        if (file == null || file.isEmpty()) throw new CsvFileNotFoundException("[오류] : [CsvSaveService] 파일을 찾지 못했음");
+        
+        // 2-2. 확장자 체크
         if (!file.getOriginalFilename().endsWith(".csv")) throw new FileUploadException("[오류] : [CsvSaveService] CSV 파일 아님");
     	
 
@@ -92,7 +95,7 @@ public class CsvSaveService {
             // 5. 헤더 검증
             String[] header = csv.readNext();
             if (header == null) 
-            	throw new InvalidCsvFormatException("[오류] : [CsvSaveService] CSV 파일 header 없음");
+            	throw new InvalidCsvFormatException("[오류] : [CsvSaveService] CSV 파일 header 없음 (fileName=" + csvLog.getFileName() + ")");
             
             // 5-1. 필수 컬럼 체크
             String[] requiredColumns = {"location_id", "epc_product", "epc_code", "epc_lot", "event_type", "business_step", "event_time"};

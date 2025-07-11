@@ -47,9 +47,10 @@ public class EventHistory {
 	
 	private String hubType;
 	private String businessStep;
+	private String businessOriginal;
 	private String eventType;
 	private LocalDateTime eventTime;
-	private LocalDate manufactureDate;
+	private LocalDateTime manufactureDate;
 	private LocalDate expiryDate;
 	
     @ManyToOne(fetch = FetchType.LAZY)
@@ -57,5 +58,6 @@ public class EventHistory {
     private Csv fileLog;
     
     private boolean abnormal;
-    private String abnormalType;
+    private String anomaly;
+    private String anomalyDescription;
 }

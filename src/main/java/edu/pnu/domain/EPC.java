@@ -27,7 +27,7 @@ public class EPC {
 	@Id
 	@Column(name ="epc_code")
 	private String epcCode;
-	private String epcCompany;
+	private Long epcCompany;
 	private Long epcLot;
 
 	private String epcSerial;
