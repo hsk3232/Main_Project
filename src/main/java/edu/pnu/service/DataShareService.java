@@ -5,14 +5,21 @@ import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
-import edu.pnu.dto.ExportRowDTO;
+import edu.pnu.Repo.EventHistoryRepository;
+import edu.pnu.domain.EventHistory;
+import edu.pnu.dto.dataShere.ExportRowDTO;
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class DataShareService {
-	 public Map<String, Object> exportAll(){
-		 
-		 List<ExportRowDTO> rows = ...; // DB에서 데이터 조회 및 변환
-	 }
+	
+	private final EventHistoryRepository eventHisotyrRepo;
+	
+	 public List<ExportRowDTO> exportAll(){
+		 List<EventHistory> entityList = eventHisotyrRepo.findAll();
+	        return entityList.stream()
+	            .map(ExportRowDTO::fromEntity)
+	            .toList();
+	    }
 }

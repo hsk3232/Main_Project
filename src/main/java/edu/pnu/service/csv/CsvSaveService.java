@@ -223,7 +223,7 @@ public class CsvSaveService {
                         EPC epc = new EPC();
                         epc.setEpcCode(epcCode);
                         if (colIdx.containsKey("epc_company"))
-                            epc.setEpcCompany(dataRow[colIdx.get("epc_company")]);
+                            epc.setEpcCompany(Long.parseLong(dataRow[colIdx.get("epc_company")]));
                         if (colIdx.containsKey("epc_lot"))
                             epc.setEpcLot(Long.parseLong(dataRow[colIdx.get("epc_lot")]));
                         if (colIdx.containsKey("epc_serial"))
@@ -249,15 +249,26 @@ public class CsvSaveService {
                     event.setLocation(locFK);
                     if (colIdx.containsKey("hub_type"))
                         event.setHubType(dataRow[colIdx.get("hub_type")]);
-                    if (colIdx.containsKey("business_step"))
-                        event.setBusinessStep(dataRow[colIdx.get("business_step")]);
+                    
+                    String businessRaw = colIdx.containsKey("business_step") ? dataRow[colIdx.get("business_step")] : null;
+                    if (businessRaw != null) {
+                        // 1. 원본값 저장
+                        event.setBusinessOriginal(businessRaw);
+
+                        // 2. 정규화값 저장
+                        String stepNormalized = normalizeBusinessStep(businessRaw);
+                        if (stepNormalized == null) {
+                            throw new InvalidCsvFormatException("[오류] business_step 값이 올바르지 않습니다: " + businessRaw);
+                        }
+                        event.setBusinessStep(stepNormalized);
+                    }
+                    
                     if (colIdx.containsKey("event_type"))
                         event.setEventType(dataRow[colIdx.get("event_type")]);
                     if (colIdx.containsKey("event_time") && !dataRow[colIdx.get("event_time")].isEmpty())
                         event.setEventTime(LocalDateTime.parse(dataRow[colIdx.get("event_time")], dtf));
                     if (colIdx.containsKey("manufacture_date") && !dataRow[colIdx.get("manufacture_date")].isEmpty())
-                        event.setManufactureDate(
-                            LocalDateTime.parse(dataRow[colIdx.get("manufacture_date")], dtf).toLocalDate());
+                        event.setManufactureDate(LocalDateTime.parse(dataRow[colIdx.get("manufacture_date")], dtf));
                     if (colIdx.containsKey("expiry_date") && !dataRow[colIdx.get("expiry_date")].isEmpty())
                         event.setExpiryDate(LocalDate.parse(dataRow[colIdx.get("expiry_date")], ymdFormatter));
                     event.setFileLog(csvLog);
@@ -314,5 +325,19 @@ public class CsvSaveService {
             // 모든 파싱 및 IO 예외, 예측 불가 런타임 에러는 이 catch에서 한 번에 처리
             throw new RuntimeException("[CsvSaveService] 파일 읽기/저장 중 오류: " + e.getMessage(), e);
         }
+    }
+    
+    private String normalizeBusinessStep(String input) {
+        if (input == null) return null;
+        input = input.trim();
+        String simplified = input.replace("_", "").toLowerCase();
+
+        if (simplified.contains("factory")) return "Factory";
+        if (simplified.contains("wms")) return "WMS";
+        if (simplified.contains("logi") || simplified.contains("hub")) return "LogiHub";
+        if ((simplified.startsWith("r") && simplified.contains("stock"))) return "Reseller";
+        if ((simplified.startsWith("w") && simplified.contains("stock"))) return "Wholesaler";
+        if (simplified.contains("pos")) return "POS";
+        return null; // 매칭 안되면 예외 처리용
     }
 }

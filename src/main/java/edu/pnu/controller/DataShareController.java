@@ -5,32 +5,30 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import edu.pnu.Repo.EPCRepository;
-import edu.pnu.Repo.EventHistoryRepository;
-import edu.pnu.Repo.LocationRepository;
-import edu.pnu.Repo.ProductRepository;
-import edu.pnu.dto.ExportRowDTO;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import edu.pnu.dto.dataShere.ExportRowDTO;
+import edu.pnu.service.DataShareService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/manager")
 public class DataShareController {
 	
-	private final EventHistoryRepository eventRepo;
-    private final ProductRepository productRepo;
-    private final EPCRepository epcRepo;
-    private final LocationRepository locationRepo;
+	private final DataShareService dataShareService;
 	
-	@GetMapping("/예은님 주소")
+	//DA에게 Data 전달
+	@GetMapping("/api/manager/export")
 	public Map<String, Object> exportAll() {
-	    
+		List<ExportRowDTO> dtoList = dataShareService.exportAll();
+
+	        Map<String, Object> result = new HashMap<>();
+	        result.put("data", dtoList);
 	    
 	    return result;
 	}
+	
+//	//DA로부터 Data 저장
+//	@PostMappting("api/v1/barcode-anomaly-detect")
+//	public Map
 }

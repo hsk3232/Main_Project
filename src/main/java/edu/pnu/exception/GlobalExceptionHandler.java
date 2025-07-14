@@ -1,6 +1,7 @@
 package edu.pnu.exception;
 
 import java.io.FileNotFoundException;
+import java.util.Map;
 
 import org.apache.tomcat.util.http.fileupload.FileUploadException;
 import org.slf4j.Logger;
@@ -53,6 +54,24 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body("CSV 형식 오류: " + ex.getMessage());
     }
+    
+    // 데이터 공유 서비스 전용 예외 (서비스 내부 오류 등)
+    @ExceptionHandler(DataShareServiceException.class)
+    public ResponseEntity<?> handleServiceException(DataShareServiceException ex) {
+        return ResponseEntity
+            .status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(Map.of("error", ex.getMessage()));
+    }
+
+    // 데이터 조회 결과가 없을 때 발생시키는 예외
+    @ExceptionHandler(NoDataFoundException.class)
+    public ResponseEntity<?> handleNoDataException(NoDataFoundException ex) {
+        return ResponseEntity
+            .status(HttpStatus.NOT_FOUND)
+            .body(Map.of("error", ex.getMessage()));
+    }
+
+    
     
     // 400(Bad Request): 사용자가 잘못 보낸 입력
     @ExceptionHandler(BadRequestException.class)

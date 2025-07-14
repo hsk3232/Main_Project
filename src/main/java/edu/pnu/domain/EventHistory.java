@@ -57,7 +57,35 @@ public class EventHistory {
     @JoinColumn(name = "file_id")
     private Csv fileLog;
     
-    private boolean abnormal;
-    private String anomaly;
-    private String anomalyDescription;
+    @Builder.Default
+    private boolean abnormal = false;
+    
+    
+    @Builder.Default
+    private boolean jump = false;
+    @Builder.Default
+    private double jumpScore = 0.0;
+    
+    @Builder.Default
+    private boolean evtOrderErr = false;
+    @Builder.Default
+    private double evtOrderErrScore = 0.0;
+    
+    @Builder.Default
+    private boolean epcFake = false;
+    @Builder.Default
+    private double epcFakeScore = 0.0;
+    
+    @Builder.Default
+    private boolean epcDup = false;
+    @Builder.Default
+    private double epcDupScore = 0.0;
+    
+    @Builder.Default
+    private boolean locErr = false;
+    @Builder.Default
+    private double locErrScore = 0.0;
+    
+    
+    
 }
