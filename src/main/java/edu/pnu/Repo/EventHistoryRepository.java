@@ -15,7 +15,7 @@ public interface EventHistoryRepository extends JpaRepository<EventHistory, Long
 	// eventType별 집계, anomaly, 기간, 커서 페이징 등
 	List<EventHistory> findByAnomalyIsNotNull(Pageable pageable);
 	
-	// 전체 이상 이벤트 커서 페이징 (anomaly만, 최신순)
+	// 전체 이상 이벤트 커서 페이징 (Anomaly만, 최신순)
 	List<EventHistory> findByAnomalyIsNotNullAndEventIdLessThanOrderByEventIdDesc(Long cursor, Pageable pageable);
 
 	// 검색(필터) + 커서 페이징
@@ -23,7 +23,7 @@ public interface EventHistoryRepository extends JpaRepository<EventHistory, Long
 
 	List<EventHistory> findByEpc_EpcCodeAndEventIdLessThanOrderByEventIdDesc(String epcCode, Long cursor, Pageable pageable);
 
-	// 예시: businessStep, eventType, 기간, anomaly 등 조건 추가
+	// 예시: businessStep, eventType, 기간, Anomaly 등 조건 추가
 	List<EventHistory> findByBusinessStepAndEventTimeBetweenAndEventIdLessThanOrderByEventIdDesc(
 	    String businessStep, LocalDateTime min, LocalDateTime max, Long cursor, Pageable pageable);
 
@@ -42,5 +42,12 @@ public interface EventHistoryRepository extends JpaRepository<EventHistory, Long
 	// unique EPC(코드) 수 (JPA 쿼리/Native 사용 필요)
 	@Query("SELECT COUNT(DISTINCT e.epc.epcCode) FROM EventHistory e WHERE e.eventType = :eventType")
 	long countDistinctEpcCodeByEventType(@Param("eventType") String eventType);
+	
+	// epcCode별 이벤트 시간순 정렬
+	List<EventHistory> findByEpc_EpcCodeOrderByEventTimeAsc(String epcCode);
+	
+	// epcCode 전체 리스트 (distinct)
+	@Query("select distinct e.epc.epcCode from EventHistory e")
+	List<String> findAllDistinctEpcCodes();
 	
 }

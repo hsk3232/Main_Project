@@ -36,7 +36,7 @@ public class EventHistory {
 	//@JoinColumn(name = 현재 테이블에 생길 새로운 칼럼명, referenced = 참조할 테이블의 PK)
     @JoinColumn(name = "epc_code") //MySQL 칼럼 기준
 	// EventHistory 테이블에 생길 새로운 칼럼명, 참조할 테이블의 PK
-	private EPC epc;
+	private Epc epc;
 	
 	
 	//N:1 locationId와 연결됨
@@ -58,7 +58,7 @@ public class EventHistory {
     private Csv fileLog;
     
     @Builder.Default
-    private boolean abnormal = false;
+    private boolean anomaly = false;
     
     
     @Builder.Default

@@ -1,4 +1,4 @@
-package edu.pnu.service.member;
+package edu.pnu.config;
 
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -31,7 +31,10 @@ public class SecurityUserDetailsService  implements UserDetailsService {
 		
 		// [2] CustomUserDetails에 Member 엔티티 정보를 전달
 		System.out.println("[전달] : [3][SecurityUserDetailsService]  CustomUserDetails에 Member 엔티티 정보를 전달\n");
-        return CustomUserDetails.builder()
+        
+	
+		
+		return CustomUserDetails.builder()
                 .userId(member.getUserId())
                 .password(member.getPassword())
                 .authorities(AuthorityUtils.createAuthorityList(member.getRole().toString()))

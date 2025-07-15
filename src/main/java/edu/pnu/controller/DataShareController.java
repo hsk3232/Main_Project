@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import edu.pnu.dto.dataShere.ExportRowDTO;
@@ -18,7 +18,7 @@ public class DataShareController {
 	private final DataShareService dataShareService;
 	
 	//DA에게 Data 전달
-	@GetMapping("/api/manager/export")
+	@PostMapping("api/v1/barcode-anomaly-detect")
 	public Map<String, Object> exportAll() {
 		List<ExportRowDTO> dtoList = dataShareService.exportAll();
 
@@ -28,7 +28,5 @@ public class DataShareController {
 	    return result;
 	}
 	
-//	//DA로부터 Data 저장
-//	@PostMappting("api/v1/barcode-anomaly-detect")
-//	public Map
+
 }

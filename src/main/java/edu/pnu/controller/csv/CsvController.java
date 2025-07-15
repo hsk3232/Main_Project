@@ -16,14 +16,21 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import edu.pnu.config.CustomUserDetails;
 import edu.pnu.dto.CsvFileListResponseDTO;
 import edu.pnu.service.csv.CsvLogService;
 import edu.pnu.service.csv.CsvSaveService;
-import edu.pnu.service.member.CustomUserDetails;
+import jakarta.servlet.annotation.MultipartConfig;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequiredArgsConstructor
+@MultipartConfig(
+        maxFileSize = 1024 * 1024 * 200, // 100mb
+        maxRequestSize = 1024 * 1024 * 500 //500mb
+)
 @RequestMapping("/api/manager")
 public class CsvController {
 	
@@ -34,8 +41,10 @@ public class CsvController {
 	@PostMapping("/upload")
 	public ResponseEntity<?> postCsv(@RequestParam("file") MultipartFile file, 
 			@AuthenticationPrincipal CustomUserDetails user) {
-		
+		log.info("[진입] : [CsvController] csv 업로드");
+		System.out.println("[디버그] 컨트롤러 user: " + user);
 		 csvSaveService.postCsv(file, user);
+		 log.info("[성공] : [CsvController] 업로드 및 저장");
 			return ResponseEntity.ok("업로드 및 저장 성공");
 	
 	}

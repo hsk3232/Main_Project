@@ -19,7 +19,7 @@ import lombok.ToString;
 @ToString
 @Entity
 @Builder
-@Table(name="KPIAnalysis")
+@Table(name="kpianalysis")
 public class KPIAnalysis {
 	
 	@Id
@@ -36,7 +36,7 @@ public class KPIAnalysis {
     // 총 생산량 (생산된 epc 코드의 수)
     private Long codeCount; // ex) 900000
 
-    // 필터 조건 내에서 발견된 총 이상 징후 발생 건수
+    // 필터 조건 내에서 발견된 총 이상 징후 발생 건수n
     private Long anomalyCount; // ex) 125
 
     // 이상 발생 비율 (anomalyCount / (totalTripCount*5))

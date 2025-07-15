@@ -1,4 +1,4 @@
-package edu.pnu.service.member;
+package edu.pnu.config;
 
 import java.util.Collection;
 

@@ -22,7 +22,7 @@ import lombok.ToString;
 @Entity
 @Builder
 @Table(name="epc")
-public class EPC {
+public class Epc {
 	
 	@Id
 	@Column(name ="epc_code")

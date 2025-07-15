@@ -11,7 +11,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.access.intercept.AuthorizationFilter;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -44,7 +44,7 @@ public class SecurityConfig {
 				.requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
 				.requestMatchers("/api/public/**").permitAll()
 				.requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-				.requestMatchers("/api/manager/**").hasRole("MANAGER")
+				.requestMatchers("/api/manager/**").hasAnyRole("MANAGER", "ADMIN")
 				.requestMatchers("/api/admin/**").hasRole("ADMIN")
 
 		);
@@ -72,7 +72,11 @@ public class SecurityConfig {
 		// 원래 UsernamePasswordAuthenticationFilter가 위치하는 곳에 대신 추가된다.  //토큰에 공장 정보 넣기 위해 Repo 주입
 		http.addFilter(new JWTAuthenticationFilter(authenticationConfiguration.getAuthenticationManager(), memberRepository));
 
-		http.addFilterBefore(new JWTAuthorizationFilter(memberRepository), AuthorizationFilter.class);
+		http.addFilterBefore(new JWTAuthorizationFilter(memberRepository), UsernamePasswordAuthenticationFilter.class);
+		
+		//http.addFilterBefore(new JWTAuthorizationFilter(memberRepository), AuthorizationFilter.class);
+		
+		// CORS 설정을 필터 체인에 적용
 		http.cors(cors -> cors.configurationSource(corsSource()));
 		
 		System.out.println("[성공] : [2][SecurityConfig] 시큐리티 필터 체인 완성 \n");
@@ -82,16 +86,25 @@ public class SecurityConfig {
 	//Front 접속 허용
 	private CorsConfigurationSource corsSource() {
 		CorsConfiguration config = new CorsConfiguration();
+		
+		// [프론트 서버] 요청을 허용할 주소
 		config.addAllowedOriginPattern("http://localhost:3000"); // 요청을 허용할 서버
+		// [분석가 서버] 요청을 허용할 주소
+		config.addAllowedOriginPattern("http://10.125.121.177:8000/api/v1/barcode-anomaly-detect");
+		
 		config.addAllowedMethod(CorsConfiguration.ALL); // 요청을 허용할 Method
 		config.addAllowedHeader(CorsConfiguration.ALL); // 요청을 허용할 Header
 		config.setAllowCredentials(true); // 요청/응답에 자격증명정보/쿠키 포함을 허용
 		// true인 경우 addAllowedOrigin("*")는 사용 불가
 		// ➔ Pattern으로 변경하거나 허용되는 출처를 명시해야 함.
-		config.addExposedHeader(HttpHeaders.AUTHORIZATION); // Header에 Authorization을 추가하기 위해서는 필요
+		
+		// Authorization 헤더를 응답에서 노출 (JWT 등)
+		config.addExposedHeader(HttpHeaders.AUTHORIZATION); 
+		
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		source.registerCorsConfiguration("/**", config); // 위 설정을 적용할 Rest 서버의 URL 패턴 설정
-		System.out.println("\n[성공] : [1][SecurityConfig] front 연결 성공 \n");
+		
+		System.out.println("\n[성공] : [1][SecurityConfig] front 및 분석가 연결 성공 \n");
 		return source;
 	}
 

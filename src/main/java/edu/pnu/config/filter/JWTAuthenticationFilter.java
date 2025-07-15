@@ -9,7 +9,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import com.auth0.jwt.JWT;
@@ -17,6 +16,7 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import edu.pnu.Repo.MemberRepository;
+import edu.pnu.config.CustomUserDetails;
 import edu.pnu.domain.Member;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -59,7 +59,7 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 			Authentication authToken = new UsernamePasswordAuthenticationToken(member.getUserId(), member.getPassword());
 			// 인증 진행 -> UserDetailsService의 loadUserByUsername에서 DB로부터 사용자 정보를 읽어온 뒤
 			// 사용자 입력 정보와 비교한 뒤 자격 증명에 성공하면 Authenticaiton객체를 만들어서 리턴한다. 
-			System.out.println("[성공] : [2][JWTAuthenticationFilter] request에서 json 타입의 [username/password]를 읽어서 Member 객체를 생성 \n");
+			log.info("[성공] : [2][JWTAuthenticationFilter] request에서 json 타입의 [username/password]를 읽어서 Member 객체를 생성 \n");
 			
 			return authenticationManager.authenticate(authToken);
 			
@@ -83,16 +83,17 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 			Authentication authResult) throws IOException, ServletException {
 		
 		// 자격 증명이 성공하면 loadUserByUsername에서 만든 객체가 authResult에 담겨져 있다.
-		System.out.println("[성공] : [3][JWTAuthenticationFilter] 사용자 인증 성공");
-		
-		User user = (User)authResult.getPrincipal();
+		log.info("[성공] : [3][JWTAuthenticationFilter] 사용자 인증 성공");
 		
 		
-		System.out.println("[유저] : " + user); // user 객체를 콘솔에 출력해서 확인
+		//User user = (User)authResult.getPrincipal(); // CustomUserDetails로 캐스팅
+		CustomUserDetails user = (CustomUserDetails) authResult.getPrincipal();
+		
+		log.info("[유저] : " + user); // user 객체를 콘솔에 출력해서 확인
 		
 		// username으로 JWT를 생성해서 Response Header - Authorization에 담아서 돌려준다.
 		// 이것은 하나의 예시로서 필요에 따라 추가 정보를 담을 수 있다.
-		System.out.println("[진행] : [4][JWTAuthenticationFilter] JWTAuthorizationFilter로 정보 이동");
+		log.info("[진행] : [4][JWTAuthenticationFilter] JWTAuthorizationFilter로 정보 이동");
 		
 		//Token에 Role 정보를 담기 위해 객체화 함.
 		String role = user.getAuthorities()
@@ -121,7 +122,7 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 				.sign(Algorithm.HMAC256("edu.pnu.jwt"));
 		
 		response.addHeader(HttpHeaders.AUTHORIZATION, "Bearer " + token);
-		System.out.println("\n[진행] : [5][JWTAuthenticationFilter] Front에 Token Head로 전달 \n");
+		log.info("\n[진행] : [5][JWTAuthenticationFilter] Front에 Token Head로 전달 \n");
 		
 		response.setStatus(HttpStatus.OK.value());
 	

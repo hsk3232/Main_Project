@@ -11,7 +11,9 @@ import org.springframework.web.bind.annotation.RestController;
 import edu.pnu.domain.Role;
 import edu.pnu.service.member.LoginService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/public")
@@ -21,15 +23,15 @@ public class LoginController {
 	
 	@GetMapping("/unauth")
 	public ResponseEntity<?> getUnauthPage(Principal principal) {
-		System.out.println("[진입] : [LoginController] 미승인 가입자 페이지 연결 진입");
+		log.info("[진입] : [LoginController] 미승인 가입자 페이지 연결 진입");
 		
 		 Role r = loginSvc.getUnauthPage(principal.getName());
 
 		    if (r == Role.ROLE_UNAUTH) {
-		        System.out.println("[성공] : [LoginController] 미승인 가입자");
+		    	log.info("[성공] : [LoginController] 미승인 가입자");
 		        return ResponseEntity.ok().body("미승인 가입자입니다.");
 		    } else {
-		        System.out.println("[차단] : [LoginController] 승인된 사용자가 요청함");
+		    	log.info("[차단] : [LoginController] 승인된 사용자가 요청함");
 		        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("잘못된 접근입니다.");
 		    }
 	}
