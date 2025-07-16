@@ -8,7 +8,9 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class BatchScheduler {
@@ -21,6 +23,6 @@ public class BatchScheduler {
             .addLong("time", System.currentTimeMillis())
             .toJobParameters();
         jobLauncher.run(analyzedTripBatchJob, params);
-        System.out.println("[배치] analyzedTripBatchJob 실행됨 (1시)");
+        log.info("[배치] : [BatchScheduler] analyzedTripBatchJob 실행됨 (1시)");
     }
 }

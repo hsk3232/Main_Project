@@ -24,105 +24,121 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
-@RequiredArgsConstructor
-public class JWTAuthorizationFilter extends OncePerRequestFilter {
+@Slf4j // ▶ 로그 출력을 위한 Slf4j
+@RequiredArgsConstructor // ▶ final 멤버 필드를 파라미터로 받는 생성자 자동 생성
+public class JWTAuthorizationFilter extends OncePerRequestFilter { // ▶ 요청당 한 번만 실행되는 필터 상속
 
-	private final MemberRepository memberRepository;
+    // ▶ 멤버 저장소(Repository)를 주입받음 (DB에서 사용자 정보 조회에 사용)
+    private final MemberRepository memberRepository;
 
-	@Override
-	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-			throws IOException, ServletException {
-		log.info("[진입] : [1][JWTAuthorizationFilter] 토큰 확인 필터 진입");
-		
-		String srcToken = request.getHeader(HttpHeaders.AUTHORIZATION); // 요청 헤더에서 Authorization을 얻어온다.
-		log.info("[발행된 토큰] : "+ srcToken);
-		
-		if (srcToken == null || !srcToken.startsWith("Bearer ")) { // 없거나 “Bearer ”로 시작하지 않는다면
-			System.out.println("[진입] : [2][JWTAuthorizationFilter] 토큰 없음 \n");
-			filterChain.doFilter(request, response); // 필터를 그냥 통과 
-			return;
-		}
-		log.info("[완료] : [2][JWTAuthorizationFilter] 토큰 확인 완료");
-		
+    // ▶ 필터가 매 요청마다 실질적으로 동작하는 메서드 (JWT 인증)
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws IOException, ServletException {
+        log.info("[진입]:[1][JWTAuthorizationFilter] 토큰 확인 필터 진입");
 
-		String jwtToken = srcToken.replace("Bearer ", ""); // 토큰에서 “Bearer ”를 제거
-		// 토큰에서 username 추출
-		
+        // [1] HTTP 요청 헤더에서 Authorization(토큰) 값 가져오기
+        String srcToken = request.getHeader(HttpHeaders.AUTHORIZATION); // 요청 헤더에서 Authorization 추출
+        log.info("[발행된 토큰] : " + srcToken);
 
-		String userId = null;
-		try {
-			// 토큰 검증 과정 try-catch로 감싸기 (만료된 토큰 등 예외 처리)
-			System.out.println("[진행] : [3][JWTAuthorizationFilter] username(id) 추출 시작 \n");
-			userId = JWT.require(Algorithm.HMAC256("edu.pnu.jwt")).build().verify(jwtToken).getClaim("userId")
-					.asString();
-			
-			// Token 유효기간 확인
-			if(JWT.require(Algorithm.HMAC256("edu.pnu.jwt")).build().verify(jwtToken).getExpiresAt().before(new Date())) {
-				response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-				System.out.println("[진행] : [4][JWTAuthorizationFilter] 로그인한 아이디의 토큰 유효기간 만료");
-				response.setContentType("text/plain");
-			    response.getWriter().write("Expired Token");
-			    
-			    // 토큰 만료시, 토큰 재발급 해서 front로 다시 보냄
-			    String token = JWT.create()
-						.withExpiresAt(new Date(System.currentTimeMillis()+1000*60*100000))
-						.withClaim("userId", userId)
-						.sign(Algorithm.HMAC256("edu.pnu.jwt"));
-				
-			    log.info("[진행] : [4][JWTAuthorizationFilter] 로그인한 아이디의 토큰 재발행 전송 \n");
-				response.addHeader(HttpHeaders.AUTHORIZATION, "Bearer " + token);
-				return ;
-			}
+        // [2] 토큰이 없거나, 'Bearer '로 시작하지 않으면 인증처리 하지 않고 필터 통과
+        if (srcToken == null || !srcToken.startsWith("Bearer ")) {
+            log.info("[진입]:[2][JWTAuthorizationFilter] 토큰 없음 \n");
+            filterChain.doFilter(request, response); // 다음 필터로 넘김
+            return;
+        }
+        log.info("[완료]:[2][JWTAuthorizationFilter] 토큰 확인 완료");
 
-		} catch (Exception e) {
-			// 예외가 발생하면 로그 출력 후 필터 체인 그냥 통과
-			log.info("[오류] : [4][JWTAuthorizationFilter] JWT 오류 발생 " + e.getMessage());
-			
-			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401
-		    
-			//filterChain.doFilter(request, response);
-			return;
-		}
+        // [3] 토큰에서 'Bearer ' 부분만 제거해서 실제 JWT만 추출
+        String jwtToken = srcToken.replace("Bearer ", "");
 
-		if (userId == null) {
-			// 🔥 토큰에 username이 없을 경우도 예외로 처리
-			 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401
+        // [4] 토큰에서 userId 추출 및 검증
+        String userId = null;
+        try {
+            // [4-1] 토큰의 userId 클레임 추출 (예외 처리로 만료, 변조 등 검사)
+            System.out.println("[진행]:[3][JWTAuthorizationFilter] username(id) 추출 시작 \n");
+            userId = JWT.require(Algorithm.HMAC256("edu.pnu.jwt"))
+                        .build()
+                        .verify(jwtToken)
+                        .getClaim("userId")
+                        .asString();
 
-			//filterChain.doFilter(request, response);
-			return;
-		}
+            // [4-2] 토큰의 만료일시 검사 (만료되었으면 401 에러 + 토큰 재발급)
+            if(JWT.require(Algorithm.HMAC256("edu.pnu.jwt"))
+                  .build()
+                  .verify(jwtToken)
+                  .getExpiresAt()
+                  .before(new Date())) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401
+                log.info("[진행]:[4][JWTAuthorizationFilter] 로그인한 아이디의 토큰 유효기간 만료");
+                response.setContentType("text/plain");
+                response.getWriter().write("Expired Token");
 
-		Optional<Member> opt = memberRepository.findByUserId(userId); // 토큰에서 얻은 username으로 DB를 검색해서 사용자를 검색
-		System.out.println("[진행] : [5][JWTAuthorizationFilter] username(id) 검색 시작");
-		if (!opt.isPresent()) { // 사용자가 존재하지 않는다면
-			
-			 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401
+                // 만료 시 새 토큰 발급해서 헤더에 추가
+                String token = JWT.create()
+                                  .withExpiresAt(new Date(System.currentTimeMillis() + 1000*60*100000))
+                                  .withClaim("userId", userId)
+                                  .sign(Algorithm.HMAC256("edu.pnu.jwt"));
 
-			//filterChain.doFilter(request, response); // 필터를 그냥 통과
-			 log.info("[오류] : [5][JWTAuthorizationFilter]사용자가 없다.");
-			return;
-		} 
-		System.out.println("[진행] : [6][JWTAuthorizationFilter] 사용자 찾음");
-		
-		Member findmember = opt.get();
-		log.info("[진행] : [7][JWTAuthorizationFilter] ROLE 값: [" + findmember.getRole()+"]");
+                log.info("[진행]:[4][JWTAuthorizationFilter] 로그인한 아이디의 토큰 재발행 전송 \n");
+                response.addHeader(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+                return;
+            }
 
+        } catch (Exception e) {
+            // [5] 토큰 검증 실패시 (예: 만료, 변조 등) 401 에러 반환
+            log.info("[오류]:[4][JWTAuthorizationFilter] JWT 오류 발생 " + e.getMessage());
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401
+            return;
+        }
 
-		try {
-		    CustomUserDetails customUser = new CustomUserDetails(
-		        findmember.getUserId(),
-		        findmember.getPassword(),
-		        AuthorityUtils.createAuthorityList(findmember.getRole().toString()),
-		        findmember.getLocation().getLocationId());
-		    Authentication auth = new UsernamePasswordAuthenticationToken(customUser, null, customUser.getAuthorities());
-		    SecurityContextHolder.getContext().setAuthentication(auth);
-		    
-		    log.info("[성공] : [8][JWTAuthorizationFilter] 토큰 확인 완료 \n");
-		    filterChain.doFilter(request, response);
-		} catch (Exception e) {
-		    e.printStackTrace();
-		    System.out.println("[오류] : [8][JWTAuthorizationFilter] 오류 발생! \n");
-		}
-	}
+        // [6] userId가 추출되지 않으면 인증 실패 처리
+        if (userId == null) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401
+            return;
+        }
+
+        // [7] 추출한 userId로 DB에서 Member 객체 조회 (Optional 사용)
+        Optional<Member> opt = memberRepository.findByUserId(userId);
+        log.info("[진행]:[5][JWTAuthorizationFilter] username(id) 검색 시작");
+        if (!opt.isPresent()) {
+            // 사용자가 없으면 인증 실패 처리
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401
+            log.info("[오류]:[5][JWTAuthorizationFilter]사용자가 없다.");
+            return;
+        }
+        log.info("[진행]:[6][JWTAuthorizationFilter] 사용자 찾음");
+
+        // [8] DB에서 찾은 Member 정보 꺼내기
+        Member findmember = opt.get();
+        log.info("[진행]:[7][JWTAuthorizationFilter] ROLE 값: [" + findmember.getRole() + "]");
+
+        try {
+            // [9] CustomUserDetails 객체 생성 (Spring Security 인증 객체)
+            CustomUserDetails customUser = new CustomUserDetails(
+                findmember.getUserId(),
+                findmember.getPassword(),
+                AuthorityUtils.createAuthorityList(findmember.getRole().toString()),
+                findmember.getLocation().getLocationId()
+            );
+
+            // [10] UsernamePasswordAuthenticationToken으로 인증 객체 생성
+            Authentication auth = new UsernamePasswordAuthenticationToken(
+                customUser,
+                null,
+                customUser.getAuthorities()
+            );
+
+            // [11] 인증 객체를 SecurityContext에 등록 (이후 컨트롤러에서 인증 정보로 활용)
+            SecurityContextHolder.getContext().setAuthentication(auth);
+
+            log.info("[성공]:[8][JWTAuthorizationFilter] 토큰 확인 완료 \n");
+            filterChain.doFilter(request, response); // 정상 인증, 다음 필터로 넘김
+
+        } catch (Exception e) {
+            // 예외 발생시 로그 출력 후 인증 실패
+            e.printStackTrace();
+            log.info("[오류]:[8][JWTAuthorizationFilter] 오류 발생! \n");
+        }
+    }
 }

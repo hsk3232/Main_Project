@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -17,14 +18,8 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.opencsv.CSVParser;
-import com.opencsv.CSVParserBuilder;
-import com.opencsv.CSVReader;
-import com.opencsv.CSVReaderBuilder;
-
 import edu.pnu.Repo.CsvRepository;
 import edu.pnu.Repo.EpcRepository;
-import edu.pnu.Repo.EventHistoryRepository;
 import edu.pnu.Repo.LocationRepository;
 import edu.pnu.Repo.MemberRepository;
 import edu.pnu.Repo.ProductRepository;
@@ -40,98 +35,88 @@ import edu.pnu.exception.CsvFileNotFoundException;
 import edu.pnu.exception.FileUploadException;
 import edu.pnu.exception.InvalidCsvFormatException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CsvSaveService {
 
-	private final ProductRepository productRepo;
-	private final EpcRepository epcRepo;
-	private final LocationRepository locationRepo;
-	private final EventHistoryRepository eventHistoryRepo;
-	private final CsvRepository csvRepo;
-	private final MemberRepository memberRepo;
+    // ---- 의존성 주입 ----
+    private final ProductRepository productRepo;
+    private final EpcRepository epcRepo;
+    private final LocationRepository locationRepo;
+    private final CsvRepository csvRepo;
+    private final MemberRepository memberRepo;
+    private final BatchService batchService; // JdbcTemplate batch insert
 
-	public void postCsv(MultipartFile file, CustomUserDetails user) {
-		
-		// [1] 유저/파일 검증 
-		if (user == null)
-			throw new BadRequestException("[오류] : [CsvSaveService] 로그인 정보 없음");
-		String userId = user.getUserId();
-		Member member = memberRepo.findByUserId(userId).orElseThrow(() -> new RuntimeException("회원 정보 없음"));
+    /**
+     * CSV 업로드 후 DB 일괄 저장 (최적화 버전)
+     */
+    public void postCsv(MultipartFile file, CustomUserDetails user) {
+        // [1] 파일/사용자 유효성 검사
+        if (user == null) throw new BadRequestException("[오류] : [CsvSaveService] 로그인 정보 없음");
+        String userId = user.getUserId();
+        Member member = memberRepo.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("회원 정보 없음"));
+        if (file == null || file.isEmpty()) throw new CsvFileNotFoundException("[오류] : [CsvSaveService] 파일을 찾지 못했음");
+        if (!file.getOriginalFilename().endsWith(".csv")) throw new FileUploadException("[오류] : [CsvSaveService] CSV 파일 아님");
 
-		if (file == null || file.isEmpty())
-			throw new CsvFileNotFoundException("[오류] : [CsvSaveService] 파일을 찾지 못했음");
+        // [2] 업로드 파일 정보(Csv 엔티티) 저장 (업로드 이력)
+        Csv csvLog = Csv.builder()
+                .fileName(file.getOriginalFilename())
+                .filePath("c:/MainProject/save_csv")
+                .fileSize(file.getSize())
+                .member(member)
+                .build();
+        csvLog = csvRepo.save(csvLog);
 
-		if (!file.getOriginalFilename().endsWith(".csv"))
-			throw new FileUploadException("[오류] : [CsvSaveService] CSV 파일 아님");
-		
-		
-		// [2] 업로드 파일 정보 저장 (Csv 로그 엔티티)
-		Csv csvLog = Csv.builder()
-				.fileName(file.getOriginalFilename())
-				.filePath("c:/MainProject/save_csv")
-				.fileSize(file.getSize())
-				.member(member).build();
-		csvLog = csvRepo.save(csvLog); // DB에 업로드 기록 저장
-		
-		 // [3] 파일 파싱 및 데이터 저장 InputStream 사용
-		try (BufferedReader reader = new BufferedReader(
-				new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
-			
-			// (1) "\t(탭)" 구분자로 파싱할 CSVReader 설정
-			CSVParser parser = new CSVParserBuilder().withSeparator('\t').build();
-			CSVReader csv = new CSVReaderBuilder(reader).withCSVParser(parser).build();
-			
-			// (2) 헤더 한 줄 읽어서, 컬럼 인덱스 매핑
-			String[] header = csv.readNext();
-			if (header == null)
-				throw new InvalidCsvFormatException(
-						"[오류] : [CsvSaveService] CSV 파일 header 없음 (fileName=" + csvLog.getFileName() + ")");
-			
-			// (3) 필수 컬럼 모두 포함되어 있는지 체크
-			String[] requiredColumns = { "location_id", "epc_product", "epc_code", "epc_lot", "event_type",
-					"business_step", "event_time" };
-			for (String col : requiredColumns) {
-				boolean found = false;
-				for (String h : header) {
-					if (col.equals(h))
-						found = true;
-				}
-				if (!found)
-					throw new InvalidCsvFormatException("[오류] : 필수 컬럼(" + col + ")이 없습니다.");
-			}
-			
-			
-			// (4) 컬럼명-인덱스 맵핑 생성 (가독성과 유지보수↑)
-			Map<String, Integer> colIdx = new HashMap<>();
-			for (int i = 0; i < header.length; i++) {
-				colIdx.put(header[i], i);
-			}
-			
-			
-			// (5) 날짜 포맷터 준비
-			DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-			DateTimeFormatter ymdFormatter = DateTimeFormatter.ofPattern("yyyyMMdd");
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
 
-			
-			// [4] 전체 Row 읽어서, 미리 ID 집합을 추출 (DB 중복 체크를 위해)
-			List<String[]> allRows = new ArrayList<>();
-			Set<Long> allLocationIds = new HashSet<>();
+            log.info("[체크] CSV 파싱 진입: 파일명 = {}", file.getOriginalFilename());
+
+            // [3] CSV 파일 파싱 (탭 구분자)
+            com.opencsv.CSVParser parser = new com.opencsv.CSVParserBuilder().withSeparator('\t').build();
+            com.opencsv.CSVReader csv = new com.opencsv.CSVReaderBuilder(reader).withCSVParser(parser).build();
+
+            // [4] 헤더 파싱, 필수 컬럼 체크
+            String[] header = csv.readNext();
+            if (header == null) throw new InvalidCsvFormatException("[오류] : [CsvSaveService] CSV 파일 header 없음 (fileName=" + csvLog.getFileName() + ")");
+            String[] requiredColumns = {
+                    "location_id", "epc_product", "epc_code", "epc_lot", "event_type",
+                    "business_step", "event_time"
+            };
+            for (String col : requiredColumns) {
+                if (Arrays.stream(header).noneMatch(col::equals))
+                    throw new InvalidCsvFormatException("[오류] : 필수 컬럼(" + col + ")이 없습니다.");
+            }
+            Map<String, Integer> colIdx = new HashMap<>();
+            for (int i = 0; i < header.length; i++) colIdx.put(header[i], i);
+
+            // [5] 날짜 포맷
+            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            DateTimeFormatter ymdFormatter = DateTimeFormatter.ofPattern("yyyyMMdd");
+
+            // [6] 모든 row를 한 번에 읽고, 데이터만 추출 (중복 체크용 집합도 생성)
+            List<String[]> allRows = new ArrayList<>();
+            Set<Long> allLocationIds = new HashSet<>();
             Set<Long> allProductIds = new HashSet<>();
             Set<String> allEpcCodes = new HashSet<>();
+            List<Integer> rowNumList = new ArrayList<>(); // 실제 row번호 추적
 
             String[] row;
+            int currRowNum = 1; // 헤더 1, 데이터 2부터
             while ((row = csv.readNext()) != null) {
+                currRowNum++;
                 allRows.add(row);
-                // 각 엔티티별 ID 추출
+                rowNumList.add(currRowNum);
                 allLocationIds.add(parseLongSafe(getValue(colIdx, row, "location_id")));
                 allProductIds.add(parseLongSafe(getValue(colIdx, row, "epc_product")));
                 allEpcCodes.add(getValue(colIdx, row, "epc_code"));
             }
-			
-			
-            // [7] DB에 이미 존재하는 ID 전체 조회
+
+            // [7] DB에 이미 존재하는 데이터 미리 조회 (중복 insert 방지)
             Set<Long> existLocationIds = locationRepo.findAllById(allLocationIds)
                     .stream().map(Location::getLocationId).collect(Collectors.toSet());
             Set<Long> existProductIds = productRepo.findAllById(allProductIds)
@@ -139,30 +124,27 @@ public class CsvSaveService {
             Set<String> existEpcCodes = epcRepo.findAllById(allEpcCodes)
                     .stream().map(Epc::getEpcCode).collect(Collectors.toSet());
 
-            // [8] 저장/중복 방지용 Set, 저장 대상 객체 리스트 선언
+            // 중복 체크용 집합
             Set<Long> insertedLocations = new HashSet<>(existLocationIds);
             Set<Long> insertedProducts = new HashSet<>(existProductIds);
             Set<String> insertedEPCs = new HashSet<>(existEpcCodes);
 
+            // [8] 저장할 엔티티들을 리스트로 쭉~ 모음
             List<Location> locations = new ArrayList<>();
             List<Product> products = new ArrayList<>();
             List<Epc> epcs = new ArrayList<>();
             List<EventHistory> events = new ArrayList<>();
 
-            int batchSize = 8000; // 실무에서는 2000~5000 권장
-            int totalRows = allRows.size();
-            int savedCount = 0;
-
-            // [9] Row별로 객체 생성 및 배치 저장
+            // [9] row별 엔티티 변환만 수행 (중복 insert 방지, 진단/분석 컬럼 모두 반영)
+            Map<String, List<Integer>> errorRows = new HashMap<>(); // row별 오류 추적
             for (int i = 0; i < allRows.size(); i++) {
                 String[] dataRow = allRows.get(i);
-                int rowNum = i + 2; // CSV는 1-based 헤더 포함
-                final String errorRow = "[row " + rowNum + "]";
+                int rowNum = rowNumList.get(i);
 
                 try {
-                    // --- [A] Location 생성 및 중복 저장 방지
+                    // [A] Location (중복 저장 방지)
                     Long locationId = parseLongSafe(getValue(colIdx, dataRow, "location_id"));
-                    if (!insertedLocations.contains(locationId)) {
+                    if (locationId != null && !insertedLocations.contains(locationId)) {
                         locations.add(Location.builder()
                                 .locationId(locationId)
                                 .scanLocation(getValue(colIdx, dataRow, "scan_location"))
@@ -171,22 +153,21 @@ public class CsvSaveService {
                                 .build());
                         insertedLocations.add(locationId);
                     }
-
-                    // --- [B] Product 생성 및 중복 저장 방지
+                    // [B] Product (중복 저장 방지)
                     Long epcProduct = parseLongSafe(getValue(colIdx, dataRow, "epc_product"));
-                    if (!insertedProducts.contains(epcProduct)) {
+                    if (epcProduct != null && !insertedProducts.contains(epcProduct)) {
                         products.add(Product.builder()
                                 .epcProduct(epcProduct)
                                 .productName(getValue(colIdx, dataRow, "product_name"))
                                 .build());
                         insertedProducts.add(epcProduct);
                     }
-
-                    // --- [C] EPC 생성 및 중복 저장 방지
+                    // [C] Epc (중복 저장 방지)
                     String epcCode = getValue(colIdx, dataRow, "epc_code");
-                    if (!insertedEPCs.contains(epcCode)) {
+                    if (epcCode != null && !insertedEPCs.contains(epcCode)) {
                         epcs.add(Epc.builder()
                                 .epcCode(epcCode)
+                                .epcHeader(getValue(colIdx, dataRow, "epcHeader"))
                                 .epcCompany(parseLongSafe(getValue(colIdx, dataRow, "epc_company")))
                                 .epcLot(parseLongSafe(getValue(colIdx, dataRow, "epc_lot")))
                                 .epcSerial(getValue(colIdx, dataRow, "epc_serial"))
@@ -195,128 +176,110 @@ public class CsvSaveService {
                                 .build());
                         insertedEPCs.add(epcCode);
                     }
+                    // [D] EventHistory 생성 (진단/분석 컬럼, null-safe 변환)
+                    EventHistory.EventHistoryBuilder eventBuilder = EventHistory.builder()
+                        .epc(Epc.builder().epcCode(epcCode).build())
+                        .location(Location.builder().locationId(locationId).build())
+                        .hubType(getValue(colIdx, dataRow, "hub_type"))
+                        .businessStep(getValue(colIdx, dataRow, "business_step"))
+                        .businessOriginal(getValue(colIdx, dataRow, "business_original"))
+                        .eventType(getValue(colIdx, dataRow, "event_type"))
+                        .fileLog(csvLog);
 
-                    // --- [D] EventHistory(이벤트 기록)는 중복 없이 모두 저장
-                    EventHistory.EventHistoryBuilder eventBuilder = EventHistory.builder();
-                    if (!isNullOrEmpty(getValue(colIdx, dataRow, "event_id")))
-                        eventBuilder.eventId(parseLongSafe(getValue(colIdx, dataRow, "event_id")));
-                    eventBuilder
-                            .epc(Epc.builder().epcCode(epcCode).build())
-                            .location(Location.builder().locationId(locationId).build())
-                            .hubType(getValue(colIdx, dataRow, "hub_type"))
-                            .eventType(getValue(colIdx, dataRow, "event_type"))
-                            .fileLog(csvLog);
-
-                    String businessRaw = getValue(colIdx, dataRow, "business_step");
-                    if (!isNullOrEmpty(businessRaw)) {
-                        eventBuilder.businessOriginal(businessRaw)
-                                .businessStep(normalizeBusinessStep(businessRaw));
+                    try { // eventTime: LocalDateTime
+                        String v = getValue(colIdx, dataRow, "event_time");
+                        if (!isNullOrEmpty(v))
+                            eventBuilder.eventTime(LocalDateTime.parse(v, dtf));
+                    } catch (Exception ex) {
+                        errorRows.computeIfAbsent("event_time 파싱 오류", k -> new ArrayList<>()).add(rowNum);
                     }
-                    if (!isNullOrEmpty(getValue(colIdx, dataRow, "event_time")))
-                        eventBuilder.eventTime(LocalDateTime.parse(getValue(colIdx, dataRow, "event_time"), dtf));
-                    if (!isNullOrEmpty(getValue(colIdx, dataRow, "manufacture_date")))
-                        eventBuilder.manufactureDate(LocalDateTime.parse(getValue(colIdx, dataRow, "manufacture_date"), dtf));
-                    if (!isNullOrEmpty(getValue(colIdx, dataRow, "expiry_date")))
-                        eventBuilder.expiryDate(LocalDate.parse(getValue(colIdx, dataRow, "expiry_date"), ymdFormatter));
+                    try { // manufactureDate: LocalDateTime
+                        String v = getValue(colIdx, dataRow, "manufacture_date");
+                        if (!isNullOrEmpty(v))
+                            eventBuilder.manufactureDate(LocalDateTime.parse(v, dtf));
+                    } catch (Exception ex) {
+                        errorRows.computeIfAbsent("manufacture_date 파싱 오류", k -> new ArrayList<>()).add(rowNum);
+                    }
+                    try { // expiryDate: LocalDate
+                        String v = getValue(colIdx, dataRow, "expiry_date");
+                        if (!isNullOrEmpty(v))
+                            eventBuilder.expiryDate(LocalDate.parse(v, ymdFormatter));
+                    } catch (Exception ex) {
+                        errorRows.computeIfAbsent("expiry_date 파싱 오류", k -> new ArrayList<>()).add(rowNum);
+                    }
+
+                    // 진단/분석 컬럼들 (값 없으면 false/0.0)
+                    eventBuilder.anomaly(parseBooleanSafe(getValue(colIdx, dataRow, "anomaly")));
+                    eventBuilder.jump(parseBooleanSafe(getValue(colIdx, dataRow, "jump")));
+                    eventBuilder.jumpScore(parseDoubleSafe(getValue(colIdx, dataRow, "jumpScore")));
+                    eventBuilder.evtOrderErr(parseBooleanSafe(getValue(colIdx, dataRow, "evtOrderErr")));
+                    eventBuilder.evtOrderErrScore(parseDoubleSafe(getValue(colIdx, dataRow, "evtOrderErrScore")));
+                    eventBuilder.epcFake(parseBooleanSafe(getValue(colIdx, dataRow, "epcFake")));
+                    eventBuilder.epcFakeScore(parseDoubleSafe(getValue(colIdx, dataRow, "epcFakeScore")));
+                    eventBuilder.epcDup(parseBooleanSafe(getValue(colIdx, dataRow, "epcDup")));
+                    eventBuilder.epcDupScore(parseDoubleSafe(getValue(colIdx, dataRow, "epcDupScore")));
+                    eventBuilder.locErr(parseBooleanSafe(getValue(colIdx, dataRow, "locErr")));
+                    eventBuilder.locErrScore(parseDoubleSafe(getValue(colIdx, dataRow, "locErrScore")));
 
                     events.add(eventBuilder.build());
 
-                    // --- [E] 배치 저장: 일정 개수마다 저장
-                    batchSave(locations, locationRepo, batchSize, errorRow + " Location");
-                    batchSave(products, productRepo, batchSize, errorRow + " Product");
-                    batchSave(epcs, epcRepo, batchSize, errorRow + " EPC");
-
-                    if (events.size() >= batchSize) {
-                        try {
-                            eventHistoryRepo.saveAll(events);
-                            savedCount += events.size();
-                            double percent = (savedCount * 100.0) / totalRows;
-                            System.out.printf("[Batch] EventHistory 저장 성공: %d개, 진행률: %.2f%%\n", events.size(), percent);
-                            events.clear();
-                        } catch (Exception e) {
-                            System.err.println(errorRow + " EventHistory insert 오류: " + e.getMessage());
-                        }
-                    }
                 } catch (Exception ex) {
-                    // Row 단위 에러는 전체 저장 멈추지 않고 로그만 남김
-                    System.err.println(errorRow + " Insert 오류: " + ex.getMessage());
+                    errorRows.computeIfAbsent("row별 Insert 오류", k -> new ArrayList<>()).add(rowNum);
+                    log.error("[row {}] Insert 오류: {}", rowNum, ex.getMessage());
                 }
             }
 
-            // [10] 마지막 남은 데이터 저장
-            batchSave(locations, locationRepo, 1, "마지막 Location");
-            batchSave(products, productRepo, 1, "마지막 Product");
-            batchSave(epcs, epcRepo, 1, "마지막 EPC");
-            if (!events.isEmpty()) {
-                try {
-                    eventHistoryRepo.saveAll(events);
-                    savedCount += events.size();
-                    double percent = (savedCount * 100.0) / totalRows;
-                    System.out.printf("[마지막] EventHistory 저장 성공: %d개, 진행률: %.2f%%\n", events.size(), percent);
-                } catch (Exception e) {
-                    System.err.println("마지막 EventHistory insert 오류: " + e.getMessage());
-                }
-            }
+            // =====================
+            // [10] 모든 마스터 엔티티를 '딱 한 번' saveAll로 저장!
+            // =====================
+            locationRepo.saveAll(locations);
+            productRepo.saveAll(products);
+            epcRepo.saveAll(epcs);
 
-		} catch (Exception e) {
-			throw new RuntimeException("[CsvSaveService] 파일 읽기/저장 중 오류: " + e.getMessage(), e);
-		}
-	}
-
-    // ==================== 헬퍼 메서드 구간 ====================
-
-    /** 일정 개수(batchSize)마다 리스트를 DB에 저장하는 공통 메서드 */
-	// 밖으로 빼는 것 고려할 것! (7/15)
-    private <T> void batchSave(List<T> list, org.springframework.data.jpa.repository.JpaRepository<T, ?> repo, int batchSize, String logTitle) {
-        if (list.size() >= batchSize) {
+            // [11] EventHistory는 JdbcTemplate batchInsert로 대량 저장 (빠름)
+            int savedCount = 0;
             try {
-                repo.saveAll(list);
-                list.clear();
+                batchService.batchInsertEventHistories(events);
+                savedCount = events.size();
             } catch (Exception e) {
-                System.err.println(logTitle + " insert 오류: " + e.getMessage());
+                errorRows.computeIfAbsent("EventHistory batch insert 오류", k -> new ArrayList<>()).add(-1);
+                log.error("EventHistory batch insert 오류: {}", e.getMessage());
             }
+
+            // [12] 에러 summary
+            if (!errorRows.isEmpty()) {
+                StringBuilder report = new StringBuilder("[CSV 저장 전체 오류 요약]\n");
+                errorRows.forEach((type, rows) -> {
+                    report.append("오류[").append(type).append("]: ").append(rows.size()).append("건 rows: ").append(rows).append("\n");
+                });
+                throw new RuntimeException(report.toString());
+            }
+
+            log.info("[CSV 저장 성공] 전체 {}건", savedCount);
+        } catch (Exception e) {
+            log.error("[CsvSaveService] 파일 읽기/저장 중 오류", e);
+            throw new RuntimeException("[CsvSaveService] 파일 읽기/저장 중 오류: " + e.getMessage(), e);
         }
     }
 
-    /** 컬럼명으로 값 안전하게 추출 */
+    // ----- 헬퍼 메서드 -----
     private String getValue(Map<String, Integer> colIdx, String[] row, String col) {
         Integer idx = colIdx.get(col);
         return (idx != null && idx < row.length) ? row[idx] : null;
     }
-
-    /** String → Long 안전 변환(빈 값이면 null) */
     private Long parseLongSafe(String s) {
-        try {
-            return (isNullOrEmpty(s)) ? null : Long.parseLong(s.trim());
-        } catch (Exception e) {
-            return null;
-        }
+        try { return (isNullOrEmpty(s)) ? null : Long.parseLong(s.trim()); }
+        catch (Exception e) { return null; }
     }
-
-    /** String → Double 안전 변환(빈 값이면 null) */
     private Double parseDoubleSafe(String s) {
-        try {
-            return (isNullOrEmpty(s)) ? null : Double.parseDouble(s.trim());
-        } catch (Exception e) {
-            return null;
-        }
+        try { return (isNullOrEmpty(s)) ? 0.0 : Double.parseDouble(s.trim()); }
+        catch (Exception e) { return 0.0; }
     }
-
-    /** null 또는 빈 문자열 체크 */
+    private boolean parseBooleanSafe(String s) {
+        if (isNullOrEmpty(s)) return false;
+        return "1".equals(s.trim()) || "true".equalsIgnoreCase(s.trim());
+    }
     private boolean isNullOrEmpty(String s) {
         return s == null || s.trim().isEmpty();
-    }
-
-    /** business_step 값 정규화 */
-    private String normalizeBusinessStep(String input) {
-        if (input == null) return null;
-        input = input.trim().toLowerCase();
-        if (input.contains("factory")) return "Factory";
-        if (input.contains("wms")) return "WMS";
-        if (input.contains("logistics_hub") || input.contains("logi") || input.contains("hub")) return "LogiHub";
-        if (input.startsWith("w_stock")) return "Wholesaler";
-        if (input.startsWith("r_stock")) return "Reseller";
-        if (input.contains("pos")) return "POS";
-        return null;
     }
 }

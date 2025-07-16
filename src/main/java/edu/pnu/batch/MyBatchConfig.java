@@ -43,7 +43,7 @@ public class MyBatchConfig {
 	        	
 	        	
 	        	
-	            System.out.println("Step 실행됨!");
+	        	log.info("[실행] : [MyBatchConfig] Step 실행됨!");
 	            return RepeatStatus.FINISHED;
 	        }, transactionManager)
 	        .build();

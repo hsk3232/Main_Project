@@ -48,7 +48,7 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 			throws AuthenticationException {
 		// request에서 json 타입의 [username/password]를 읽어서 Member 객체를 생성한다.
 		
-		System.out.println("\n"+"[진입] : [1][JWTAuthenticationFilter] POST 방식 로그인 시도 진입");
+		log.info("\n"+"[진입] : [1][JWTAuthenticationFilter] POST 방식 로그인 시도 진입");
 		
 		ObjectMapper mapper = new ObjectMapper();
 		
@@ -67,7 +67,7 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 		
 		catch (Exception e) {
 			// “자격 증명에 실패하였습니다.” 로그 출력
-			System.out.println("[실패] : [2][JWTAuthenticationFilter] 사용자 인증 실패 \n");
+			log.info("[실패] : [2][JWTAuthenticationFilter] 사용자 인증 실패 \n");
 			log.info(e.getMessage());
 			// 자격 증명에 실패하면 응답코드 리턴
 			response.setStatus(HttpStatus.UNAUTHORIZED.value());
