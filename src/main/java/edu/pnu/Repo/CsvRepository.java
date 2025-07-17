@@ -1,6 +1,7 @@
 package edu.pnu.Repo;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -24,6 +25,10 @@ public interface CsvRepository extends JpaRepository<Csv, Long> {
 
 	// 커서만(검색 없이)
 	List<Csv> findByFileIdLessThanOrderByFileIdDesc(Long cursor, Pageable pageable);
+	
+	Optional<Csv> findById(Long fileId);
+	
+	Optional<Csv> findTopByOrderByFileIdDesc();
 
 	
 }

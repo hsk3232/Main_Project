@@ -1,5 +1,7 @@
 package edu.pnu.dto.dataShere;
 
+import edu.pnu.domain.Epc;
+import edu.pnu.domain.EpcAnomalyStats;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -15,5 +17,16 @@ public class EpcAnomalyStatsDTO {
     private int epcFakeCount;
     private int epcDupCount;
     private int locErrCount;
-    private int abnormalCount;
+    
+    public static EpcAnomalyStats toEntity(EpcAnomalyStatsDTO d, Epc e){
+    	return EpcAnomalyStats.builder()
+    			.epc(e) //EpcAnomalyStats entity에 있는 joinColum 변수명을 써야함.
+    			.totalEvents(d.getTotalEvents())
+    			.jumpCount(d.getJumpCount())
+    			.evtOrderErrCount(d.getEvtOrderErrCount())
+    			.epcFakeCount(d.getEpcFakeCount())
+    			.epcDupCount(d.getEpcDupCount())
+    			.locErrCount(d.getLocErrCount())
+    			.build();
+    }
 }

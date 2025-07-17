@@ -50,4 +50,6 @@ public interface EventHistoryRepository extends JpaRepository<EventHistory, Long
 	@Query("select distinct e.epc.epcCode from EventHistory e")
 	List<String> findAllDistinctEpcCodes();
 	
+	List<EventHistory> findByFileLog_FileId(Long fildId);
+	
 }
