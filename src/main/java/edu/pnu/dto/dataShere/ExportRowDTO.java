@@ -2,6 +2,7 @@ package edu.pnu.dto.dataShere;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
@@ -26,8 +27,12 @@ public class ExportRowDTO {
 	private Long locationId;
 	private String businessStep;
 	private String eventType;
-	private LocalDateTime eventTime;
-	private Long fileId;
+	
+	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime eventTime;
+
+    private Long fileId;
+	
 	
 	public static ExportRowDTO fromEntity(EventHistory h) {
 		return ExportRowDTO.builder()

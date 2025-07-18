@@ -121,5 +121,24 @@ public class CsvController {
 	        executor.shutdownNow();
 	    }
 	}
+	
+	
+//	@PostMapping("/resend-ai/{fileId}")
+//    public String sendOneForTest(@PathVariable Long fileId) {
+//        dataShareService.setBatchSendingEnabled(false); // 배치 중지
+//        
+//        // 1개만 전송 (서비스 메서드 호출)
+//        List<ExportRowDTO> dtoList = dataShareService.exportByFileId(fileId);
+//        if (dtoList == null || dtoList.isEmpty()) {
+//            dataShareService.setBatchSendingEnabled(true); // 테스트 끝나면 배치 활성화
+//            return "보낼 데이터가 없습니다!";
+//        }
+//        
+//        // 1개만 보내기
+//        dataShareService.sendToAiAndSave(dtoList.subList(0, 1));
+//        
+//        dataShareService.setBatchSendingEnabled(true); // 테스트 끝나면 배치 활성화
+//        return "테스트 1개 데이터 전송 완료";
+//    }	
 
 }
