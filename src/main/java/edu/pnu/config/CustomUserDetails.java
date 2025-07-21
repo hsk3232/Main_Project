@@ -18,6 +18,9 @@ import lombok.ToString;
 @AllArgsConstructor
 @ToString
 @Builder
+
+// ---------------- UserDetails 구현체 --------------------
+
 // 로그인 유저 정보(아이디, 권한, 공장코드) 관리하는 보안 객체
 public class CustomUserDetails implements UserDetails { // Spring Security의 인증 객체로 사용
 	// 객체 직렬화/역직렬화(저장, 네트워크 전송)할 때 클래스 버전이 바뀌어도 같은 객체로 인식할지 체크

@@ -2,6 +2,7 @@ package edu.pnu.Repo;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -9,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import edu.pnu.domain.EventHistory;
+import edu.pnu.domain.Location;
 
 public interface EventHistoryRepository extends JpaRepository<EventHistory, Long> {
 
@@ -51,5 +53,8 @@ public interface EventHistoryRepository extends JpaRepository<EventHistory, Long
 	List<String> findAllDistinctEpcCodes();
 	
 	List<EventHistory> findByFileLog_FileId(Long fildId);
+
+	Optional<EventHistory> findFirstByLocationOrderByEventTimeDesc(Location l);
 	
+	List<EventHistory> findAllByOrderByEpc_EpcCodeAscEventTimeAsc();
 }

@@ -1,4 +1,4 @@
-package edu.pnu.config;
+package edu.pnu.service.security;
 
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -7,10 +7,11 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import edu.pnu.Repo.MemberRepository;
+import edu.pnu.config.CustomUserDetails;
 import edu.pnu.domain.Member;
 import lombok.RequiredArgsConstructor;
 
-// --------------인증(로그인, 토큰 발급)에만 사용----------//
+// --------------(DB에서 유저 찾기)----------//
 
 @Service
 @RequiredArgsConstructor

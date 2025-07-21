@@ -20,7 +20,7 @@ import edu.pnu.Repo.MemberRepository;
 import edu.pnu.config.filter.JWTAuthenticationFilter;
 import edu.pnu.config.filter.JWTAuthorizationFilter;
 
-// --------- Security 설정---------//
+// --------- Security 보안 규칙, 필터, 인가 정책 ---------//
 
 @Configuration
 public class SecurityConfig {

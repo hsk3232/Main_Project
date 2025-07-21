@@ -1,4 +1,4 @@
-package edu.pnu.batch;
+package edu.pnu.config;
 
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.transaction.PlatformTransactionManager;
 
+import edu.pnu.service.batch.BatchTriggerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -27,6 +28,9 @@ public class MyBatchConfig {
 	private final JobRepository jobRepo; // ⭐️ batch에서 필수!
     private final PlatformTransactionManager transactionManager; // ⭐️ Step 생성에 필요
 	
+    private final BatchTriggerService batchTriggerService;
+    
+    
 	@Bean// 정적분석 플러그인에서 	@Bean으로 선언한 메서드는 public이 아니어도 된다
 	Job analyzedTripBatchJob(Step analyzedTripStep) {
 		return new JobBuilder("analyzedTripBatchJob", jobRepo)
@@ -41,7 +45,8 @@ public class MyBatchConfig {
 	        .tasklet((contribution, chunkContext) -> {
 	            // 여기에 배치 작업 로직 작성 (예: 로그, DB 저장 등)
 	        	
-	        	
+	        	// [1] 새로운 Csv 저장되면, AnalyzedTrip 로직 저장
+	        	batchTriggerService.analyzeAndSaveAllTrips(); 
 	        	
 	        	log.info("[실행] : [MyBatchConfig] Step 실행됨!");
 	            return RepeatStatus.FINISHED;

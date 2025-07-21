@@ -25,9 +25,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import edu.pnu.config.CustomUserDetails;
 import edu.pnu.dto.CsvFileListResponseDTO;
-import edu.pnu.service.DataShareService;
 import edu.pnu.service.csv.CsvLogService;
 import edu.pnu.service.csv.CsvSaveService;
+import edu.pnu.service.datashare.DataShareService;
 import jakarta.servlet.annotation.MultipartConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,15 +47,15 @@ public class CsvController {
 
 	// Front -> Back csv 전달 및 저장
 	@PostMapping("/upload")
-	public ResponseEntity<String> postCsv(@RequestParam("file") MultipartFile file,
+	public ResponseEntity<Map<String, String>> postCsv(@RequestParam("file") MultipartFile file,
 			@AuthenticationPrincipal CustomUserDetails user) {
 		log.info("[진입] : [CsvController] csv 업로드");
 		System.out.println("[디버그] 컨트롤러 user: " + user);
 		csvSaveService.postCsv(file, user);
 		log.info("[성공] : [CsvController] 업로드 및 저장");
-		dataShareService.sendDataAndSaveResultAsync(); // 자동으로 AI모듈 연동 트리거!
+		dataShareService.autoSendLatestFile(); // 자동으로 AI모듈 연동 트리거!
 		log.info("[성공] : [CsvController] dataShareServcie 정보 전달 시작");
-		return ResponseEntity.ok("업로드 및 저장 성공");
+		return ResponseEntity.ok(Map.of("message", "업로드 요청이 접수되었습니다. 분석 결과는 잠시 후 알림으로 안내됩니다."));
 
 	}
 
@@ -123,22 +123,6 @@ public class CsvController {
 	}
 	
 	
-//	@PostMapping("/resend-ai/{fileId}")
-//    public String sendOneForTest(@PathVariable Long fileId) {
-//        dataShareService.setBatchSendingEnabled(false); // 배치 중지
-//        
-//        // 1개만 전송 (서비스 메서드 호출)
-//        List<ExportRowDTO> dtoList = dataShareService.exportByFileId(fileId);
-//        if (dtoList == null || dtoList.isEmpty()) {
-//            dataShareService.setBatchSendingEnabled(true); // 테스트 끝나면 배치 활성화
-//            return "보낼 데이터가 없습니다!";
-//        }
-//        
-//        // 1개만 보내기
-//        dataShareService.sendToAiAndSave(dtoList.subList(0, 1));
-//        
-//        dataShareService.setBatchSendingEnabled(true); // 테스트 끝나면 배치 활성화
-//        return "테스트 1개 데이터 전송 완료";
-//    }	
+
 
 }

@@ -102,6 +102,10 @@
 			<artifactId>spring-boot-configuration-processor</artifactId>
 			<optional>true</optional>
 		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-websocket</artifactId>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -127,7 +131,7 @@
 					</annotationProcessorPaths>
 				</configuration>
 			</plugin>
-			
+
 			<!-- spring-boot-maven-plugin은 변경없이 그대로 유지 -->
 			<plugin>
 				<groupId>org.springframework.boot</groupId>

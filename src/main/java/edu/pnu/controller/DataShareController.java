@@ -4,7 +4,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import edu.pnu.service.DataShareService;
+import edu.pnu.service.datashare.DataShareService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -21,7 +21,7 @@ public class DataShareController {
     	log.info("[진입] : [DataShareController] 비동기 import 진입");
     	
     	
-        dataShareService.sendDataAndSaveResultAsync();  // 바로 리턴!
+        dataShareService.autoSendLatestFile();  // 바로 리턴!
         log.info("[성공] : [DataShareController] 데이터 전달 성공");
         return "비동기로 분석 요청을 보냄";
     }

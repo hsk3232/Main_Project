@@ -1,4 +1,4 @@
-package edu.pnu.service;
+package edu.pnu.service.datashare;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -45,9 +45,12 @@ public class DataShareService {
 	private final FileAnomalyStatsRepository fileAnomalyStatsRepo;
 	private final DataShareProperties props; // 주입된 커스텀 설정 클래스
 	
-	/**
-	 * [비동기] 파일 ID로 분석 데이터 추출 + AI 서버에 전송
-	 */
+	
+	// ■■■■■■■■■■■■■■■■■■■■■
+	// ■■■ 외부 트리거 진입점 ■■■
+	// ■■■■■■■■■■■■■■■■■■■■■
+	
+	// [비동기] AI 서버에 전송
 	@Async
 	public void sendDataAndSaveResultAsync(Long fileId) {
 		log.info("\n[START][비동기] AI 데이터 자동 전송 트리거 (fileId=" + fileId + ")");
@@ -70,15 +73,14 @@ public class DataShareService {
 		log.info("[END][비동기] 전체 자동 전송 프로세스 완료\n");
 	}
 
-	/**
-	 * [비동기] 최근 파일 ID 자동 추출 후 AI 서버에 전송
-	 */
-	@Async
-	public void sendDataAndSaveResultAsync() {
-		log.info("\n[START][비동기] 최근 파일 자동 탐색 → AI 전송 트리거");
 
-		log.info("[진행] : 최신 CSV 파일 ID 조회...");
-		Long lastFileId = csvRepo.findTopByOrderByFileIdDesc().map(Csv::getFileId).orElse(null);
+	 // [비동기] 최근 파일 ID를 자동으로 찾아서 sendDataAndSaveResultAsync(fileId) 호출
+	@Async
+	public void autoSendLatestFile() {
+		log.info("[START][비동기] 최신 CSV 파일로 AI 전송 시작");
+		Long lastFileId = csvRepo.findTopByOrderByFileIdDesc()
+				.map(Csv::getFileId)
+				.orElse(null);
 
 		if (lastFileId == null) {
 			log.info("[경고] : CSV 파일이 하나도 없음! [자동 전송 종료]");
@@ -92,9 +94,8 @@ public class DataShareService {
 		log.info("[END][비동기] 최근 파일 자동 전송 프로세스 완료\n");
 	}
 
-	/**
-	 * [동기] 파일 ID로 분석 데이터 추출 + AI 서버에 전송 (타임아웃 적용을 원할 때 사용)
-	 */
+	
+	// [동기] 파일 ID로 분석 데이터 추출 + AI 서버에 전송 (타임아웃 적용을 원할 때 사용)	
 	public void sendDataAndSaveResult(Long fileId) {
 		log.info("\n[START][동기] AI 데이터 수동 전송 트리거 (fileId=" + fileId + ")");
 
@@ -116,32 +117,22 @@ public class DataShareService {
 		log.info("[END][동기] 전체 수동 전송 프로세스 완료\n");
 	}
 
-	/**
-	 * 특정 파일 ID로 EventHistory 리스트를 DTO로 변환
-	 */
+
+//	 특정 파일 ID로 EventHistory 리스트를 DTO로 변환
+
 	public List<ExportRowDTO> exportByFileId(Long fileId) {
 		log.info("[진행] : EventHistory 엔티티 → ExportRowDTO 변환 (fileId=" + fileId + ")");
+		
 		List<EventHistory> entityList = eventHistoryRepo.findByFileLog_FileId(fileId);
 		return entityList.stream().map(ExportRowDTO::fromEntity).toList();
 	}
 
-//    public void setBatchSendingEnabled(boolean enabled) {
-//        this.batchSendingEnabled = enabled;
-//    }
-//    
-//    private volatile boolean batchSendingEnabled = true;
-//
-//    public void sendDataBatchSafe(List<ExportRowDTO> dtoList) {
-//        if (!batchSendingEnabled) {
-//            log.info("[경고] 배치 전송 비활성화 상태입니다.");
-//            return;
-//        }
-//        // 기존 배치 전송 로직 수행
-//    }
 
-	/**
-	 * AI 서버에 데이터 전송 및 결과 수신 후 DB 반영
-	 */
+
+	//	■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+	//	■■ AI 서버에 데이터 전송 및 결과 수신 후 DB 반영 ■■
+	//	■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+	
 
     public void sendToAiAndSave(List<ExportRowDTO> dtoList) {
         int batchSize = props.getBatchSize();
@@ -250,9 +241,9 @@ public class DataShareService {
         }
     }
 
-	/**
-	 * AI 서버에서 받은 이상치 분석 결과(ImportDataDTO)를 DB에 반영
-	 */
+	// ■■■■■■■■■■■■■■■■■■■■■■■■■■
+	// ■■■ 결과 반영 (DB 업데이트) ■■■
+	// ■■■■■■■■■■■■■■■■■■■■■■■■■■
 	public void applyAnomalyResult(ImportDataDTO importData) {
 		log.info("[진입] : [DataShareService] AI로부터 받은 DB 저장 진입");
 

@@ -1,7 +1,5 @@
 package edu.pnu.domain;
 
-import java.time.LocalDateTime;
-
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -25,14 +23,14 @@ import lombok.ToString;
 public class AnalyzedTrip {
     @Id 
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    private String epcCode;
-    private String productName;
-    private String fromLocation;
-    private String toLocation;
+    private Long roadId;
+    private String fromScanLocation;
+    private String toScanLocation;
+    private Long fromLocationId;
+    private Long toLocationId;
     private String fromBusinessStep;
     private String toBusinessStep;
-    private LocalDateTime fromEventTime;
-    private LocalDateTime toEventTime;
+    private String fromEventType;
+    private String toEventType;
     
 }

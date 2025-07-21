@@ -70,6 +70,14 @@ public class GlobalExceptionHandler {
             .status(HttpStatus.NOT_FOUND)
             .body(Map.of("error", ex.getMessage()));
     }
+    
+    //NodeList를 만들지 못할 때
+    @ExceptionHandler(NodeNotFoundException.class)
+    public ResponseEntity<?> handleNodeNotFoundException(NodeNotFoundException ex) {
+    	return ResponseEntity
+    			.status(HttpStatus.NO_CONTENT)
+    			.body("Node List 생성 오류" + ex.getMessage());
+    }
 
     
     
