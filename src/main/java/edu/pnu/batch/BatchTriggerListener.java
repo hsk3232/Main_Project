@@ -4,8 +4,9 @@ import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import edu.pnu.events.EventHistorySavedEvent;
 import lombok.RequiredArgsConstructor;
@@ -22,8 +23,10 @@ public class BatchTriggerListener {
 	
 	// [이벤트 리스너] - EventHistorySavedEvent가 발생하면 자동 호출됨
     // 주로 CSV 업로드 완료 후, Service에서 eventPublisher.publishEvent()로 발행
-	@EventListener
+	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
 	public void handleEvent(EventHistorySavedEvent event) throws Exception {
+		
+		log.info("[배치트리거] : [BatchTriggerListener] CSV 업로드 로그 ID = " + event.getFileId() + "로 배치 진입");
 		
 		// [JobParameters] - Spring Batch에서는 파라미터가 동일하면 이미 실행된 Job으로 간주하고 다시 실행하지 않음
 		JobParameters params = new JobParametersBuilder()
@@ -36,6 +39,5 @@ public class BatchTriggerListener {
 		jobLauncher.run(analyzedTripBatchJob, params);
 		
 		
-        log.info("[배치트리거] : [BatchTriggerListener] CSV 업로드 로그 ID = " + event.getCsvLogId() + "로 배치 실행");
 	}
 }

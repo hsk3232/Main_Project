@@ -21,12 +21,16 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 	private final SecurityUserDetailsService securityUserDetailsService;
 
 	@Override
-
 	public void registerStompEndpoints(StompEndpointRegistry registry) {
-		// registerStompEndpoints 메서드
+		// registerStompEnd=points 메서드
 		// → 클라이언트(프론트, 브라우저, 앱 등)가 접속할 WebSocket 엔드포인트(주소) 등록
-		registry.addEndpoint("/webSokect").addInterceptors(new JwtHandshakeInterceptor(securityUserDetailsService))
+		
+		System.out.println("[진입] : [WebSocketConfig] Websocket 설정 진입");
+		
+		registry.addEndpoint("/webSocket").addInterceptors(new JwtHandshakeInterceptor(securityUserDetailsService))
 				.setAllowedOriginPatterns("http://localhost:3000") // CORS: 프론트엔드만 허용
 				.withSockJS();
+		
+		System.out.println("[완료] : [WebSocketConfig] Websocket Front만 접근 가능 설정 완료");
 	}
 }

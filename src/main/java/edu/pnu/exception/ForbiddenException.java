@@ -1,5 +1,8 @@
 package edu.pnu.exception;
 
 public class ForbiddenException extends RuntimeException {
-    public ForbiddenException(String msg) { super(msg); }
+
+	private static final long serialVersionUID = 1L;
+
+	public ForbiddenException(String msg) { super(msg); }
 }

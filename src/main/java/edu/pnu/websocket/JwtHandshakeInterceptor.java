@@ -25,6 +25,9 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
 	@Override
 	public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response, WebSocketHandler wsHandler,
 			Map<String, Object> attributes) throws Exception {
+		
+		System.out.println("[진입] : [JwtHandshakeInterceptor] WebSocket 사용을 위한 인증 객체 진입 ");
+		
 		   // 1. 헤더에서 JWT 추출
 	    List<String> authHeaders = request.getHeaders().get("Authorization");
 	    if (authHeaders != null && !authHeaders.isEmpty()) {
@@ -40,8 +43,11 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
 	        CustomUserDetails userDetails = (CustomUserDetails) userDetailsService.loadUserByUsername(userId);
 	        // 3. attributes에 저장
 	        attributes.put("userDetails", userDetails);
+	        
+	        System.out.println("[성공] : [JwtHandshakeInterceptor] WebSocket userDetails 정보 저장 성공 ");
 	        return true;
 	    } else {
+	    	System.err.println("[오류] : [JwtHandshakeInterceptor] 인증 객체 없음");
 	        return false; // 인증 없으면 거부
 	    }
 	}

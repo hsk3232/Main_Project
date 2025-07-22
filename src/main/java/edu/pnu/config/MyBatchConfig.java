@@ -4,6 +4,7 @@ import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.repeat.RepeatStatus;
@@ -18,7 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Configuration
-@EnableBatchProcessing
+@EnableBatchProcessing // Spring Batch 기능 활성화
 @EnableScheduling
 @RequiredArgsConstructor
 
@@ -34,7 +35,8 @@ public class MyBatchConfig {
 	@Bean// 정적분석 플러그인에서 	@Bean으로 선언한 메서드는 public이 아니어도 된다
 	Job analyzedTripBatchJob(Step analyzedTripStep) {
 		return new JobBuilder("analyzedTripBatchJob", jobRepo)
-				.start(analyzedTripStep)
+				.incrementer(new RunIdIncrementer()) // RunIdIncrementer 추가
+	            .start(analyzedTripStep()) // StepScope를 위해 null 전달
 				.build();
 	}
 
@@ -45,10 +47,10 @@ public class MyBatchConfig {
 	        .tasklet((contribution, chunkContext) -> {
 	            // 여기에 배치 작업 로직 작성 (예: 로그, DB 저장 등)
 	        	
+	        	log.info("[실행] : [MyBatchConfig] Step 실행됨!");
 	        	// [1] 새로운 Csv 저장되면, AnalyzedTrip 로직 저장
 	        	batchTriggerService.analyzeAndSaveAllTrips(); 
 	        	
-	        	log.info("[실행] : [MyBatchConfig] Step 실행됨!");
 	            return RepeatStatus.FINISHED;
 	        }, transactionManager)
 	        .build();

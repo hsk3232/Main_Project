@@ -12,5 +12,5 @@ import lombok.ToString;
 @AllArgsConstructor
 @Builder
 public class EventHistorySavedEvent {
-    private Long csvLogId;
+    private Long fileId;
 }

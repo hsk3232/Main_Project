@@ -28,6 +28,9 @@ public class BatchTriggerService {
 	
 	@Transactional
 	public List<AnalyzedTrip> analyzeAndSaveAllTrips() {
+		
+		System.out.println("[진입] : [BatchTriggerService] AnalyzedTrip DB 추출 진입");
+		
 		// 1. 전체 EventHistory를 epcCode, eventTime 기준 정렬 조회
 	    List<EventHistory> allEvents = eventHistoryRepo.findAllByOrderByEpc_EpcCodeAscEventTimeAsc();
 	    List<AnalyzedTrip> trips = new ArrayList<>();

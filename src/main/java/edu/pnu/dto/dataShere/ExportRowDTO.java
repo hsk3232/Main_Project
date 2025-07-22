@@ -42,7 +42,7 @@ public class ExportRowDTO {
 		        .businessStep(h.getBusinessStep())
 		        .eventType(h.getEventType())
 		        .eventTime(h.getEventTime())
-		        .fileId(h.getFileLog().getFileId())
+		        .fileId(h.getCsv().getFileId())
 				.build();
 	}
 }

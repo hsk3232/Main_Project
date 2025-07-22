@@ -12,7 +12,7 @@ import lombok.Setter;
 
 public class ImportDataDTO {
     private Long fileId;
-    private List<EventHistoryImportDTO> eventHistoryImportDTO;
+    private List<AiDataDTO> eventHistoryImportDTO;
     private List<EpcAnomalyStatsDTO> epcAnomalyStatsDTO;
     private FileAnomalyStatsDTO fileAnomalyStatsDTO;
 }

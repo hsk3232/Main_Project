@@ -56,7 +56,7 @@
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
-			<version>${lombok.version}</version> <!-- properties에서 버전을 관리하도록 수정 -->
+			<!-- properties에서 버전을 관리하도록 수정 -->
 			<optional>true</optional>
 		</dependency>
 		<dependency>

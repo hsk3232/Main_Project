@@ -12,12 +12,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -28,7 +26,6 @@ import com.opencsv.CSVReaderBuilder;
 
 import edu.pnu.Repo.CsvRepository;
 import edu.pnu.Repo.EpcRepository;
-import edu.pnu.Repo.EventHistoryRepository;
 import edu.pnu.Repo.LocationRepository;
 import edu.pnu.Repo.MemberRepository;
 import edu.pnu.Repo.ProductRepository;
@@ -39,11 +36,11 @@ import edu.pnu.domain.EventHistory;
 import edu.pnu.domain.Location;
 import edu.pnu.domain.Member;
 import edu.pnu.domain.Product;
-import edu.pnu.events.EventHistorySavedEvent;
 import edu.pnu.exception.BadRequestException;
 import edu.pnu.exception.CsvFileNotFoundException;
 import edu.pnu.exception.FileUploadException;
 import edu.pnu.exception.InvalidCsvFormatException;
+import edu.pnu.service.datashare.DataShareService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -61,17 +58,16 @@ public class CsvSaveService {
 	private final MemberRepository memberRepo;
 	private final CsvSaveBatchService batchService; // JdbcTemplate batch insert
 	
-	private final EventHistoryRepository eventHistoryRepo;
-    private final ApplicationEventPublisher eventPublisher;
-	
-	private final WebSocketService webSocketService;
+	private final DataShareService dataShareService;
+    private final WebSocketService webSocketService;
 
 	private final int chunkSize = 1000; // 한 번에 읽어 처리할 row 수 (청크 단위)
 
 	// ■■■■■■■■■■■■■■■■■■■■■■■■■■■ [비동기 업로드 진입 메서드] ■■■■■■■■■■■■■■■■■■■■■■■■
 	// CSV 파일을 chunk 단위로 버퍼링해서 효율적으로 파싱 및 저장하는 메인 메서드
-	@Async
-	public CompletableFuture<Void> postCsv(MultipartFile file, CustomUserDetails user) {
+	
+	
+	public Long postCsv(MultipartFile file, CustomUserDetails user) {
 		try (BufferedReader reader = new BufferedReader(
 				new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
 
@@ -179,7 +175,8 @@ public class CsvSaveService {
 					// === chunkSize 도달시점(최초)에만 중복세트 초기화 ===
 					if (insertedLocations == null) {
 						Set<Long> existLocationIds = locationRepo.findAllById(allLocationIds).stream()
-								.map(Location::getLocationId).collect(Collectors.toSet());
+								.map(Location::getLocationId)
+								.collect(Collectors.toSet());
 						Set<Long> existProductIds = productRepo.findAllById(allProductIds).stream()
 								.map(Product::getEpcProduct).collect(Collectors.toSet());
 						Set<String> existEpcCodes = epcRepo.findAllById(allEpcCodes).stream().map(Epc::getEpcCode)
@@ -199,6 +196,7 @@ public class CsvSaveService {
 
 					try {
 						// [1] Location 저장 (중복 없는 신규만)
+
 					    batchService.saveLocations(locations);
 
 					    // [2] Product 저장
@@ -259,6 +257,8 @@ public class CsvSaveService {
 				    // [4] EventHistory 저장 (마지막!)
 				    batchService.saveEventHistories(eventHistories);
 					log.info("[성공] 마지막 청크 처리 완료 (row: {} ~ {})", rowNum - chunk.size() + 1, rowNum);
+					
+					
 				} catch (Exception e) {
 					// ★ 저장 실패 시, 해당 chunk의 row 번호를 모두 errorRows에 기록 ★
 					int startRow = rowNum - chunkSize + 1;
@@ -277,11 +277,32 @@ public class CsvSaveService {
 				chunk.clear();
 			}
 			log.info("[END] 전체 CSV 업로드 완료 - 총 row 수: {}", rowNum - 1);
+			webSocketService.sendMessage(user.getUserId(), "DB 저장 완료");
 
+			
 			// (1) 저장이 모두 끝난 직후! 이벤트 발행
-			eventPublisher.publishEvent(new EventHistorySavedEvent(csvLog.getFileId()));
+			try {
+//				log.info("[성공] : [CsvController] dataShareServcie 정보 전달 시작");
+//				dataShareService.autoSendLatestFile(); // 자동으로 AI모듈 연동 트리거!
+//				log.info("[진입] : [CsvSaveService] 배치 트리거 이벤트 발행 직전");
+//				
+//				//eventPublisher.publishEvent(new EventHistorySavedEvent(csvLog.getFileId()));
+//				
+//				log.info("[성공] : [CsvSaveService] 배치 트리거 이벤트 발행 완료");
 
-			webSocketService.sendMessage(user.getUserId(), "업로드 및 저장 성공");
+			} catch (Exception e) {
+			    log.error("[오류] : [analyzedTripStep] → [CsvSaveService] Exception: ", e);
+			}
+			
+			try {
+				 webSocketService.sendMessage(user.getUserId(), "AI 전송 중");
+				 log.info("[전송] : [CsvSaveService] WebSocket 메시지 전송");
+				
+				
+			}catch (Exception e) {
+			    log.error("[오류] : [analyzedTripStep] → [CsvSaveService] Exception: ", e);
+			}
+			
 			
 
 			// [10] Factory location 허용 여부 체크
@@ -304,7 +325,10 @@ public class CsvSaveService {
 			log.error("[ERROR] CSV 처리 중 예외 발생 - 원인: {}", e.getMessage(), e);
 			throw new RuntimeException(e);
 		}
-		return CompletableFuture.completedFuture(null);
+		
+		Optional<Csv> csv = csvRepo.findTopByOrderByFileIdDesc();
+	    return csv.map(Csv::getFileId)
+	              .orElseThrow(() -> new IllegalStateException("Csv 저장 후 데이터가 조회되지 않음"));
 	}
 
 	// ■■■■■■■■■■■■■■■■■■■■■■■■■■■ [청크 단위 CSV 파싱 메서드] ■■■■■■■■■■■■■■■■■■■■■■■■
@@ -369,7 +393,8 @@ public class CsvSaveService {
 						.location(Location.builder().locationId(locId).build())
 						.hubType(getValue(colIdx, row, "hub_type")).eventType(getValue(colIdx, row, "event_type"))
 						.businessOriginal(getValue(colIdx, row, "business_step"))
-						.businessStep(normalizeBusinessStep(getValue(colIdx, row, "business_step"))).fileLog(csvLog);
+						.businessStep(normalizeBusinessStep(getValue(colIdx, row, "business_step")))
+						.csv(csvLog);
 
 				// 날짜 파싱
 				evBuilder.eventTime(tryParseDateTime(getValue(colIdx, row, "event_time"), dtf, errorRows, currentRow,
@@ -379,19 +404,7 @@ public class CsvSaveService {
 				evBuilder.expiryDate(tryParseDate(getValue(colIdx, row, "expiry_date"), ymdFormatter, errorRows,
 						currentRow, "expiry_date"));
 
-				// 기타 필드
-				evBuilder.anomaly(parseBooleanSafe(getValue(colIdx, row, "anomaly")))
-						.jump(parseBooleanSafe(getValue(colIdx, row, "jump")))
-						.jumpScore(parseDoubleSafe(getValue(colIdx, row, "jump_score")))
-						.evtOrderErr(parseBooleanSafe(getValue(colIdx, row, "evt_order_err")))
-						.evtOrderErrScore(parseDoubleSafe(getValue(colIdx, row, "evt_order_err_score")))
-						.epcFake(parseBooleanSafe(getValue(colIdx, row, "epc_fake")))
-						.epcFakeScore(parseDoubleSafe(getValue(colIdx, row, "epc_fake_score")))
-						.epcDup(parseBooleanSafe(getValue(colIdx, row, "epc_dup")))
-						.epcDupScore(parseDoubleSafe(getValue(colIdx, row, "epc_dup_score")))
-						.locErr(parseBooleanSafe(getValue(colIdx, row, "loc_err")))
-						.locErrScore(parseDoubleSafe(getValue(colIdx, row, "loc_err_score")));
-
+				
 				eventHistories.add(evBuilder.build());
 
 			} catch (Exception e) {
@@ -431,12 +444,6 @@ public class CsvSaveService {
 		}
 	}
 
-	// 문자열을 Boolean 타입으로 변환 ("1" 또는 "true"일 경우 true 반환)
-	private boolean parseBooleanSafe(String s) {
-		if (isNullOrEmpty(s))
-			return false;
-		return "1".equals(s.trim()) || "true".equalsIgnoreCase(s.trim());
-	}
 
 	// 문자열이 null이거나 빈 문자열인지 확인
 	private boolean isNullOrEmpty(String s) {

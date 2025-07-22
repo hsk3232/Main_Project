@@ -19,8 +19,7 @@ public class DataShareController {
     @PostMapping("export-and-analyze-async")
     public String exportAndAnalyzeAsync() {
     	log.info("[진입] : [DataShareController] 비동기 import 진입");
-    	
-    	
+
         dataShareService.autoSendLatestFile();  // 바로 리턴!
         log.info("[성공] : [DataShareController] 데이터 전달 성공");
         return "비동기로 분석 요청을 보냄";

@@ -27,6 +27,7 @@ import edu.pnu.config.CustomUserDetails;
 import edu.pnu.dto.CsvFileListResponseDTO;
 import edu.pnu.service.csv.CsvLogService;
 import edu.pnu.service.csv.CsvSaveService;
+import edu.pnu.service.csv.WebSocketService;
 import edu.pnu.service.datashare.DataShareService;
 import jakarta.servlet.annotation.MultipartConfig;
 import lombok.RequiredArgsConstructor;
@@ -44,17 +45,29 @@ public class CsvController {
 	private final CsvLogService csvLogService;
 	private final CsvSaveService csvSaveService;
 	private final DataShareService dataShareService;
-
+	private final WebSocketService webSocketService;
+	
 	// Front -> Back csv 전달 및 저장
 	@PostMapping("/upload")
 	public ResponseEntity<Map<String, String>> postCsv(@RequestParam("file") MultipartFile file,
 			@AuthenticationPrincipal CustomUserDetails user) {
 		log.info("[진입] : [CsvController] csv 업로드");
 		System.out.println("[디버그] 컨트롤러 user: " + user);
-		csvSaveService.postCsv(file, user);
+		// 1. 업로드 시작 알림
+	    webSocketService.sendMessage(user.getUserId(), "업로드 시작");
+
+	    // 2. CSV 저장 (DB insert까지 동기 완료)
+	    Long fileId = csvSaveService.postCsv(file, user);
+
+	    // 3. AI 분석 동기 호출
+	    dataShareService.sendDataAndSaveResult(fileId);
+
+	    // 4. 분석 완료 알림
+	    webSocketService.sendMessage(user.getUserId(), "AI 분석 완료");
+
+	    // 5. 응답 반환
 		log.info("[성공] : [CsvController] 업로드 및 저장");
-		dataShareService.autoSendLatestFile(); // 자동으로 AI모듈 연동 트리거!
-		log.info("[성공] : [CsvController] dataShareServcie 정보 전달 시작");
+		
 		return ResponseEntity.ok(Map.of("message", "업로드 요청이 접수되었습니다. 분석 결과는 잠시 후 알림으로 안내됩니다."));
 
 	}
