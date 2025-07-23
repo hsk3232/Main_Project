@@ -3,6 +3,7 @@ package edu.pnu.controller.csv;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -46,30 +47,36 @@ public class CsvController {
 	private final CsvSaveService csvSaveService;
 	private final DataShareService dataShareService;
 	private final WebSocketService webSocketService;
+
 	
 	// Front -> Back csv 전달 및 저장
 	@PostMapping("/upload")
 	public ResponseEntity<Map<String, String>> postCsv(@RequestParam("file") MultipartFile file,
 			@AuthenticationPrincipal CustomUserDetails user) {
-		log.info("[진입] : [CsvController] csv 업로드");
-		System.out.println("[디버그] 컨트롤러 user: " + user);
-		// 1. 업로드 시작 알림
-	    webSocketService.sendMessage(user.getUserId(), "업로드 시작");
 
-	    // 2. CSV 저장 (DB insert까지 동기 완료)
-	    Long fileId = csvSaveService.postCsv(file, user);
+		String userId = user.getUserId();
 
-	    // 3. AI 분석 동기 호출
-	    dataShareService.sendDataAndSaveResult(fileId);
+		// 1. 즉시 사용자에게 시작 알림
+		webSocketService.sendMessage(userId, "파일 업로드 시작");
 
-	    // 4. 분석 완료 알림
-	    webSocketService.sendMessage(user.getUserId(), "AI 분석 완료");
+		// 2. CSV 저장 (EventHistory까지만)
+		Long fileId = csvSaveService.postCsv(file, user);
 
-	    // 5. 응답 반환
-		log.info("[성공] : [CsvController] 업로드 및 저장");
-		
-		return ResponseEntity.ok(Map.of("message", "업로드 요청이 접수되었습니다. 분석 결과는 잠시 후 알림으로 안내됩니다."));
+		// 3. 즉시 응답 반환
+		webSocketService.sendMessage(userId, "CSV 저장 완료");
 
+		CompletableFuture.runAsync(() -> {
+	        try {
+	            csvSaveService.processAiAndStatistics(fileId, userId);
+	        } catch (Exception e) {
+	            // 비동기 에러는 WebSocket으로만 처리
+	            webSocketService.sendMessage(userId, "처리 중 오류 발생: " + e.getMessage());
+	            log.error("[오류] 비동기 처리 실패: {}", e.getMessage(), e);
+	        }
+		});
+
+		return ResponseEntity.ok(Map.of("message", "업로드 시작됨. 파일 ID: " + fileId + ". 진행상황은 실시간으로 알림됩니다."));
+     
 	}
 
 

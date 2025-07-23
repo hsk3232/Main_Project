@@ -18,7 +18,7 @@ public class AiDataDTO {
 	
 	// 각 이벤트별 상세
     private Long eventId;
-    private boolean anormaly;
+    private boolean anomaly;
     private boolean jump;
     private double jumpScore;
     private boolean evtOrderErr;

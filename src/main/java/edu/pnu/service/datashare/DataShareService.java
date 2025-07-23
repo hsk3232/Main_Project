@@ -68,6 +68,26 @@ public class DataShareService {
 	}
 
 	
+	@Transactional
+    public void createInitialAiData(Long fileId) {
+		log.info("[시작] AiData 초기 생성 - fileId: {}", fileId);
+	    
+	    // ★ DB에서 다시 조회 - 이때 eventId가 세팅된 상태 ★
+	    List<EventHistory> events = eventHistoryRepo.findByCsv_FileId(fileId);
+	    if (events.isEmpty()) {
+	        log.warn("[경고] EventHistory가 없음 - fileId: {}", fileId);
+	        return;
+	    }
+	    
+	    List<AiData> aiDataList = events.stream()
+	        .map(event -> AiData.builder().eventHistory(event).build())  // 이제 event.eventId 존재!
+	        .toList();
+	    
+	    aiDataRepo.saveAll(aiDataList); // JPA 사용으로 안전하게
+	    log.info("[완료] AiData 초기 생성: {}건", aiDataList.size());
+    }
+	
+	
 //	 ■■■■■■■■■■■■■ [동기] 파일 ID로 분석 데이터 추출 + AI 서버에 전송 ■■■■■■■■■■■■■■
 	public void sendDataAndSaveResult(Long fileId) {
 		log.info("\n[START][동기] : [DataShareService] AI 데이터 수동 전송 트리거 (fileId=" + fileId + ")");
@@ -77,14 +97,12 @@ public class DataShareService {
 
 		if (dtoList.isEmpty()) {
 			log.error("[경고] : [DataShareService] ExportRowDTO 리스트가 비어있음! (fileId=" + fileId + ")");
-			log.error("[END][동기]: [DataShareService] 전송 중단\n");
 			return;
 		}
 
 		log.info("[진행] : 분석 데이터 추출 완료 (" + dtoList.size() + "건)");
-		log.info("[진행] : AI 서버로 데이터 전송 단계로 이동");
 		sendToAiAndSave(dtoList);
-		log.info("[END][동기] 전체 수동 전송 프로세스 완료\n");
+		log.info("[완료] : [DataShareService] AI 데이터 처리 완료 (fileId={})", fileId);
 	}
 
 	
