@@ -1,17 +1,18 @@
-package edu.pnu.service.csv;
+package edu.pnu.websocket;
 
 import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 
 //■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
 //■■■■■■■■■■■■■■■■■■■■  Spring 서버가 WebSocket을 사용할 수 있게 설정 ■■■■■■■■■■■■■■■■■■■■■■
 //■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
 
-
-@RestController
+@Slf4j
+@Service
 @RequiredArgsConstructor
 public class WebSocketService {
 	private final SimpMessagingTemplate messagingTemplate; // Spring이 제공하는 메시지 발송 유틸 클래스.

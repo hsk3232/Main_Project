@@ -6,7 +6,6 @@ import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
 import edu.pnu.service.security.SecurityUserDetailsService;
-import edu.pnu.websocket.JwtHandshakeInterceptor;
 import lombok.RequiredArgsConstructor;
 
 //	■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■

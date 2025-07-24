@@ -1,4 +1,4 @@
-package edu.pnu.websocket;
+package edu.pnu.config;
 
 import java.util.List;
 import java.util.Map;
@@ -11,7 +11,6 @@ import org.springframework.web.socket.server.HandshakeInterceptor;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 
-import edu.pnu.config.CustomUserDetails;
 import edu.pnu.service.security.SecurityUserDetailsService;
 import lombok.RequiredArgsConstructor;
 

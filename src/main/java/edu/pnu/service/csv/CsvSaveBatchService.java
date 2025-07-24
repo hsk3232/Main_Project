@@ -1,7 +1,9 @@
 package edu.pnu.service.csv;
 
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.List;
 
@@ -34,7 +36,7 @@ public class CsvSaveBatchService {
 		
 		if (locations.isEmpty())
 			return;
-		String sql = "INSERT INTO location (location_id, scan_location, latitude, longitude) VALUES (?, ?, ?, ?)";
+		String sql = "INSERT INTO location (location_id, scan_location, latitude, longitude, operator_id, device_id) VALUES (?, ?, ?, ?, ?, ?)";
 		jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
 			public void setValues(PreparedStatement ps, int i) throws SQLException {
 				Location l = locations.get(i);
@@ -42,6 +44,8 @@ public class CsvSaveBatchService {
 				ps.setString(2, l.getScanLocation());
 				ps.setDouble(3, l.getLatitude());
 				ps.setDouble(4, l.getLongitude());
+				ps.setLong(5, l.getOperatorId());
+				ps.setLong(6, l.getDeviceId());
 			}
 
 			public int getBatchSize() {
@@ -59,12 +63,13 @@ public class CsvSaveBatchService {
 		
 		if (products.isEmpty())
 			return;
-		String sql = "INSERT INTO product (epc_product, product_name) VALUES (?, ?)";
+		String sql = "INSERT INTO product (epc_product, product_name, epc_company) VALUES (?, ?, ?)";
 		jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
 			public void setValues(PreparedStatement ps, int i) throws SQLException {
 				Product p = products.get(i);
-				ps.setLong(1, p.getEpcProduct());
+				ps.setString(1, p.getEpcProduct());
 				ps.setString(2, p.getProductName());
+				ps.setString(3, p.getEpcCompany());
 			}
 
 			public int getBatchSize() {
@@ -81,17 +86,27 @@ public class CsvSaveBatchService {
 		
 		if (epcs.isEmpty())
 			return;
-		String sql = "INSERT INTO epc (epc_code, epc_header, epc_company, epc_lot, epc_serial, location_id, epc_product) VALUES (?, ?, ?, ?, ?, ?, ?)";
+		String sql = "INSERT INTO epc (epc_code, epc_header, epc_lot, epc_serial, location_id, epc_product, manufacture_date, expiry_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 		jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
 			public void setValues(PreparedStatement ps, int i) throws SQLException {
 				Epc e = epcs.get(i);
 				ps.setString(1, e.getEpcCode());
 				ps.setString(2, e.getEpcHeader());
-				ps.setObject(3, e.getEpcCompany());
-				ps.setObject(4, e.getEpcLot());
-				ps.setString(5, e.getEpcSerial());
-				ps.setObject(6, e.getLocation() != null ? e.getLocation().getLocationId() : null);
-				ps.setObject(7, e.getProduct() != null ? e.getProduct().getEpcProduct() : null);
+				ps.setString(3, e.getEpcLot());
+				ps.setString(4, e.getEpcSerial());
+				ps.setObject(5, e.getLocation() != null ? e.getLocation().getLocationId() : null);
+				ps.setObject(6, e.getProduct() != null ? e.getProduct().getEpcProduct() : null);
+				
+				if (e.getManufactureDate() != null)
+					ps.setTimestamp(7, Timestamp.valueOf(e.getManufactureDate()));
+				else
+					ps.setNull(7, Types.TIMESTAMP);
+
+				// [9] expiry_date
+				if (e.getExpiryDate() != null)
+					ps.setDate(8, Date.valueOf(e.getExpiryDate()));
+				else
+					ps.setNull(8, Types.DATE);
 			}
 
 			public int getBatchSize() {
@@ -109,7 +124,7 @@ public class CsvSaveBatchService {
 		if (event.isEmpty())
 			return;
 
-		String sql = "INSERT INTO eventhistory (epc_code, location_id, hub_type, business_step, business_original, event_type, event_time, manufacture_date, expiry_date, file_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+		String sql = "INSERT INTO eventhistory (epc_code, location_id, hub_type, business_step, business_original, event_type, event_time, file_id, anomaly) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
 		try {
 			
@@ -144,20 +159,10 @@ public class CsvSaveBatchService {
 					else
 						ps.setNull(7, Types.TIMESTAMP);
 
-					// [8] manufacture_date
-					if (ev.getManufactureDate() != null)
-						ps.setTimestamp(8, java.sql.Timestamp.valueOf(ev.getManufactureDate()));
-					else
-						ps.setNull(8, Types.TIMESTAMP);
-
-					// [9] expiry_date
-					if (ev.getExpiryDate() != null)
-						ps.setDate(9, java.sql.Date.valueOf(ev.getExpiryDate()));
-					else
-						ps.setNull(9, Types.DATE);
-
 					// [10] FK: file_id
-					ps.setObject(10, ev.getCsv() != null ? ev.getCsv().getFileId() : null);
+					ps.setObject(8, ev.getCsv() != null ? ev.getCsv().getFileId() : null);
+					
+					ps.setBoolean(9, ev.isAnomaly());
 				}
 
 				public int getBatchSize() {
@@ -174,29 +179,19 @@ public class CsvSaveBatchService {
 		}
 	}
 	
-	public void saveAiDataBatch(List<AiData> aiDataList) {
-		String sql = "INSERT INTO aidata (anomaly, epc_dup, epc_dup_score, epc_fake, epc_fake_score, evt_order_err, evt_order_err_score, jump, jump_score, loc_err, loc_err_score, event_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ";
-		jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
-			 public void setValues(PreparedStatement ps, int i) throws SQLException {
-				 AiData a = aiDataList.get(i);
-				 ps.setBoolean(1, a.isAnomaly());
-				 ps.setBoolean(2, a.isEpcDup());
-				 ps.setDouble(3, a.getEpcDupScore());
-				 ps.setBoolean(4, a.isEpcFake());
-				 ps.setDouble(5, a.getEpcFakeScore());
-				 ps.setBoolean(6, a.isEvtOrderErr());
-				 ps.setDouble(7, a.getEvtOrderErrScore());
-				 ps.setBoolean(8, a.isJump());
-				 ps.setDouble(9, a.getJumpScore());
-				 ps.setBoolean(10, a.isLocErr());
-				 ps.setDouble(11, a.getLocErrScore());
-		         ps.setObject(12, a.getEventHistory().getEventId());
-
-			 }
-			 public int getBatchSize() {
-				 return aiDataList.size();
-			 }
-		});
-	}
+//	public void saveAiDataBatch(List<AiData> aiDataList) {
+//		String sql = "INSERT INTO aidata (anomaly, event_id) VALUES (?, ?) ";
+//		jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
+//			 public void setValues(PreparedStatement ps, int i) throws SQLException {
+//				 AiData a = aiDataList.get(i);
+//				 ps.setString(1, a.getAnomalyType());
+//		         ps.setObject(2, a.getEventHistory().getEventId());
+//
+//			 }
+//			 public int getBatchSize() {
+//				 return aiDataList.size();
+//			 }
+//		});
+//	}
 
 }

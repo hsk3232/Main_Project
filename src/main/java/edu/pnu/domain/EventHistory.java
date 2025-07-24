@@ -1,6 +1,5 @@
 package edu.pnu.domain;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Entity;
@@ -50,12 +49,14 @@ public class EventHistory {
 	private String businessOriginal;
 	private String eventType;
 	private LocalDateTime eventTime;
-	private LocalDateTime manufactureDate;
-	private LocalDate expiryDate;
+
 	
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "file_id")
     private Csv csv;
+    
+    @Builder.Default
+    private boolean anomaly = false;
     
    
     

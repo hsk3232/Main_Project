@@ -23,4 +23,6 @@ public class Location {
 	
 	private double latitude;
 	private double longitude;
+	private Long operatorId;
+	private Long deviceId;
 }

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -22,15 +23,10 @@ import edu.pnu.Repo.FileAnomalyStatsRepository;
 import edu.pnu.config.DataShareProperties;
 import edu.pnu.domain.AiData;
 import edu.pnu.domain.Csv;
-import edu.pnu.domain.Epc;
-import edu.pnu.domain.EpcAnomalyStats;
 import edu.pnu.domain.EventHistory;
-import edu.pnu.domain.FileAnomalyStats;
-import edu.pnu.dto.dataShere.AiDataDTO;
-import edu.pnu.dto.dataShere.EpcAnomalyStatsDTO;
-import edu.pnu.dto.dataShere.ExportRowDTO;
-import edu.pnu.dto.dataShere.FileAnomalyStatsDTO;
-import edu.pnu.dto.dataShere.ImportDataDTO;
+import edu.pnu.dto.dataShere.ExportDataToAiDTO;
+import edu.pnu.dto.dataShere.ImportAiDataDTO;
+import edu.pnu.dto.dataShere.ImportDatafromAiDTO;
 import edu.pnu.exception.NoDataFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -68,32 +64,32 @@ public class DataShareService {
 	}
 
 	
-	@Transactional
-    public void createInitialAiData(Long fileId) {
-		log.info("[시작] AiData 초기 생성 - fileId: {}", fileId);
-	    
-	    // ★ DB에서 다시 조회 - 이때 eventId가 세팅된 상태 ★
-	    List<EventHistory> events = eventHistoryRepo.findByCsv_FileId(fileId);
-	    if (events.isEmpty()) {
-	        log.warn("[경고] EventHistory가 없음 - fileId: {}", fileId);
-	        return;
-	    }
-	    
-	    List<AiData> aiDataList = events.stream()
-	        .map(event -> AiData.builder().eventHistory(event).build())  // 이제 event.eventId 존재!
-	        .toList();
-	    
-	    aiDataRepo.saveAll(aiDataList); // JPA 사용으로 안전하게
-	    log.info("[완료] AiData 초기 생성: {}건", aiDataList.size());
-    }
-	
+//	@Transactional
+//    public void createInitialAiData(Long fileId) {
+//		log.info("[시작] AiData 초기 생성 - fileId: {}", fileId);
+//	    
+//	    // ★ DB에서 다시 조회 - 이때 eventId가 세팅된 상태 ★
+//	    List<EventHistory> events = eventHistoryRepo.findByCsv_FileId(fileId);
+//	    if (events.isEmpty()) {
+//	        log.warn("[경고] EventHistory가 없음 - fileId: {}", fileId);
+//	        return;
+//	    }
+//	    
+//	    List<AiData> aiDataList = events.stream()
+//	        .map(event -> AiData.builder().eventHistory(event).build())  // 이제 event.eventId 존재!
+//	        .toList();
+//	    
+//	    aiDataRepo.saveAll(aiDataList); // JPA 사용으로 안전하게
+//	    log.info("[완료] AiData 초기 생성: {}건", aiDataList.size());
+//    }
+//	
 	
 //	 ■■■■■■■■■■■■■ [동기] 파일 ID로 분석 데이터 추출 + AI 서버에 전송 ■■■■■■■■■■■■■■
 	public void sendDataAndSaveResult(Long fileId) {
 		log.info("\n[START][동기] : [DataShareService] AI 데이터 수동 전송 트리거 (fileId=" + fileId + ")");
 
 		log.info("[진행] : [DataShareService] 분석 데이터 추출 시도...");
-		List<ExportRowDTO> dtoList = exportByFileId(fileId);
+		List<ExportDataToAiDTO> dtoList = exportByFileId(fileId);
 
 		if (dtoList.isEmpty()) {
 			log.error("[경고] : [DataShareService] ExportRowDTO 리스트가 비어있음! (fileId=" + fileId + ")");
@@ -107,7 +103,7 @@ public class DataShareService {
 
 	
 //	 ■■■■■■■■■■■■■  특정 파일 ID로 EventHistory 리스트를 DTO로 변환 ■■■■■■■■■■■■■■
-	public List<ExportRowDTO> exportByFileId(Long fileId) {
+	public List<ExportDataToAiDTO> exportByFileId(Long fileId) {
 		log.info("[진행] : EventHistory 엔티티 → ExportRowDTO 변환 (fileId=" + fileId + ")");
 
 		// [1] fileId null 체크를 쿼리 전에!
@@ -117,13 +113,19 @@ public class DataShareService {
 
 		// [2] 쿼리 실행
 		List<EventHistory> entityList = eventHistoryRepo.findByCsv_FileId(fileId);
-		return entityList.stream().map(ExportRowDTO::fromEntity).toList();
+		 // epcCode로 그룹핑
+	    Map<String, List<EventHistory>> groupByEpc = entityList.stream()
+	            .collect(Collectors.groupingBy(e -> e.getEpc().getEpcCode()));
+
+	    return groupByEpc.entrySet().stream()
+	            .map(e -> ExportDataToAiDTO.from(e.getKey(), e.getValue()))
+	            .toList();
 	}
 
 	
 //	 ■■■■■■■■■■  AI 서버에 데이터 전송 및 결과 수신 후 DB 반영  ■■■■■■■■■■
 	@Transactional
-	public void sendToAiAndSave(List<ExportRowDTO> dtoList) {
+	public void sendToAiAndSave(List<ExportDataToAiDTO> dtoList) {
 		// [1-1] 설정값 읽기
 		int batchSize = props.getBatchSize();
 		int maxRetries = props.getRetryMaxAttempts();
@@ -155,7 +157,7 @@ public class DataShareService {
 		// [2] 배치 단위로 분할 전송
 		for (int i = 0; i < total; i += batchSize) {
 			int end = Math.min(i + batchSize, total);
-			List<ExportRowDTO> batch = dtoList.subList(i, end);
+			List<ExportDataToAiDTO> batch = dtoList.subList(i, end);
 			int batchIndex = (i / batchSize) + 1;
 
 			log.info("[배치전송][{}] {}~{}번 전송 시도", batchIndex, i + 1, end);
@@ -166,7 +168,7 @@ public class DataShareService {
 			HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
 
 			// [2-2] 전송 및 재시도
-			ImportDataDTO importData = sendBatchWithRetry(restTemplate, aiApiUrl, request, maxRetries, retryDelayMillis,
+			ImportDatafromAiDTO importData = sendBatchWithRetry(restTemplate, aiApiUrl, request, maxRetries, retryDelayMillis,
 					batchIndex);
 
 			if (importData != null) {
@@ -214,11 +216,11 @@ public class DataShareService {
 	}
 
 	// [재시도 처리 로직]
-	private ImportDataDTO sendBatchWithRetry(RestTemplate restTemplate, String url, HttpEntity<?> request,
+	private ImportDatafromAiDTO sendBatchWithRetry(RestTemplate restTemplate, String url, HttpEntity<?> request,
 			int maxRetries, long retryDelayMillis, int batchIndex) {
 		for (int attempt = 1; attempt <= maxRetries + 1; attempt++) {
 			try {
-				ResponseEntity<ImportDataDTO> response = restTemplate.postForEntity(url, request, ImportDataDTO.class);
+				ResponseEntity<ImportDatafromAiDTO> response = restTemplate.postForEntity(url, request, ImportDatafromAiDTO.class);
 
 				if (response.getStatusCode().is2xxSuccessful()) {
 					log.info("[응답][{}][시도:{}] AI 서버 응답 수신 완료 (status: {})", batchIndex, attempt,
@@ -248,16 +250,16 @@ public class DataShareService {
 
 	// ■■■■■■■■■■■■■■■■ 결과 반영 (DB 업데이트) ■■■■■■■■■■■■■■■■
 
-	public void applyAnomalyResult(ImportDataDTO importData) {
+	public void applyAnomalyResult(ImportDatafromAiDTO importData) {
 		log.info("[진입] : [DataShareService] AI로부터 받은 이상치 결과 DB 반영 시작");
 
-		if (importData.getEventHistoryImportDTO() != null) {
-			List<AiDataDTO> dtoList = importData.getEventHistoryImportDTO();
+		if (importData.getImportAiDataList() != null) {
+			List<ImportAiDataDTO> dtoList = importData.getImportAiDataList();
 
 			log.info("[진행] : [DataShareService] AiData 업데이트 대상 건수 = {}", dtoList.size());
 
 			// [1-1] eventId 목록 추출
-			List<Long> eventIds = dtoList.stream().map(AiDataDTO::getEventId).toList();
+			List<Long> eventIds = dtoList.stream().map(ImportAiDataDTO::getEventId).toList();
 
 			// [1-2] eventId 기준으로 AiData 조회 (EventHistory.eventId 기준!)
 			List<AiData> aiDataList = aiDataRepo.findByEventHistory_EventIdIn(eventIds);
@@ -269,71 +271,19 @@ public class DataShareService {
 			}
 
 			// [1-4] DTO 값을 엔티티에 반영 (null일 경우 기본값 사용)
-			for (AiDataDTO dto : dtoList) {
+			for (ImportAiDataDTO dto : dtoList) {
 				AiData entity = aiDataMap.get(dto.getEventId());
-				if (entity == null) {
-					log.warn("[경고] : eventId={}에 해당하는 AiData 엔티티 없음 → 건너뜀", dto.getEventId());
-					continue;
-				}
-				
+			
 				entity.setAnomaly(true); // 분석된 이상치는 무조건 true 처리
 
-				entity.setJump(Boolean.TRUE.equals(dto.isJump()));
-				entity.setJumpScore(dto.getJumpScore());
 
-				entity.setEvtOrderErr(Boolean.TRUE.equals(dto.isEvtOrderErr()));
-				entity.setEvtOrderErrScore(dto.getEvtOrderErrScore());
-
-				entity.setEpcFake(Boolean.TRUE.equals(dto.isEpcFake()));
-				entity.setEpcFakeScore(dto.getEpcFakeScore());
-
-				entity.setEpcDup(Boolean.TRUE.equals(dto.isEpcDup()));
-				entity.setEpcDupScore(dto.getEpcDupScore());
-
-				entity.setLocErr(Boolean.TRUE.equals(dto.isLocErr()));
-				entity.setLocErrScore(dto.getLocErrScore());
-			}
 
 			// [1-5] 일괄 저장
 			aiDataRepo.saveAll(aiDataList);
 			log.info("[완료] : [DataShareService] AiData 이상치 반영 완료 ({}건)", aiDataList.size());
 		}
 
-		// [2] EPC 이상치 통계 반영
-		if (importData.getEpcAnomalyStatsDTO() != null) {
-			List<EpcAnomalyStats> stats = new ArrayList<>();
 
-			for (EpcAnomalyStatsDTO dto : importData.getEpcAnomalyStatsDTO()) {
-				try {
-					Epc epc = epcRepo.findById(dto.getEpcCode())
-							.orElseThrow(() -> new RuntimeException("EPC코드 없음: " + dto.getEpcCode()));
-					stats.add(EpcAnomalyStatsDTO.toEntity(dto, epc));
-				} catch (Exception e) {
-					log.error("[오류] : EPC 이상치 반영 실패 - epcCode={}, 원인: {}", dto.getEpcCode(), e.getMessage());
-				}
-			}
-
-			epcAnomalyStatsRepo.saveAll(stats);
-			log.info("[완료] : [DataShareService] EPC 이상치 통계 반영 완료 ({}건)", stats.size());
-		}
-
-		// [3] 파일 전체 이상치 통계 반영
-		if (importData.getFileAnomalyStatsDTO() != null) {
-			try {
-				FileAnomalyStatsDTO f = importData.getFileAnomalyStatsDTO();
-				Csv csv = csvRepo.findById(importData.getFileId())
-						.orElseThrow(() -> new RuntimeException("File id 없음: " + importData.getFileId()));
-
-				FileAnomalyStats fas = FileAnomalyStatsDTO.toEntity(f, csv);
-				fileAnomalyStatsRepo.save(fas);
-
-				log.info("[완료] : [DataShareService] 파일 전체 이상치 통계 반영 완료 (fileId={})", f.getFileId());
-			} catch (Exception e) {
-				log.error("[오류] : 파일 통계 반영 중 실패 - 원인: {}", e.getMessage(), e);
-			}
-		}
-
-		log.info("[END] : [DataShareService] 전체 이상치 결과 반영 완료\n");
 	}
 
 }

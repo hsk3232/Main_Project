@@ -28,8 +28,8 @@ import edu.pnu.config.CustomUserDetails;
 import edu.pnu.dto.CsvFileListResponseDTO;
 import edu.pnu.service.csv.CsvLogService;
 import edu.pnu.service.csv.CsvSaveService;
-import edu.pnu.service.csv.WebSocketService;
 import edu.pnu.service.datashare.DataShareService;
+import edu.pnu.websocket.WebSocketService;
 import jakarta.servlet.annotation.MultipartConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -117,7 +117,7 @@ public class CsvController {
 	}
 
 	
-	@PostMapping("/resend-ai/{fileId}")
+	@PostMapping("/resend/{fileId}")
 	public String resendToAi(@PathVariable Long fileId) {
 		ExecutorService executor = Executors.newSingleThreadExecutor();
 		try {

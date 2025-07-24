@@ -10,9 +10,9 @@ import lombok.Setter;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 
-public class ImportDataDTO {
+public class ImportDatafromAiDTO {
     private Long fileId;
-    private List<AiDataDTO> eventHistoryImportDTO;
-    private List<EpcAnomalyStatsDTO> epcAnomalyStatsDTO;
-    private FileAnomalyStatsDTO fileAnomalyStatsDTO;
+    private List<ImportAiDataDTO> ImportAiDataList;
+
+
 }

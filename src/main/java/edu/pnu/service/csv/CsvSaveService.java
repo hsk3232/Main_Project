@@ -39,8 +39,9 @@ import edu.pnu.exception.BadRequestException;
 import edu.pnu.exception.CsvFileNotFoundException;
 import edu.pnu.exception.FileUploadException;
 import edu.pnu.exception.InvalidCsvFormatException;
-import edu.pnu.service.batch.BatchTriggerService;
 import edu.pnu.service.datashare.DataShareService;
+import edu.pnu.service.statistics.StatisticsAdminService;
+import edu.pnu.websocket.WebSocketService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -58,7 +59,7 @@ public class CsvSaveService {
 	private final CsvRepository csvRepo;
 	private final MemberRepository memberRepo;
 
-	private final BatchTriggerService batchTriggerService;
+	private final StatisticsAdminService statisticsAdminService;
 
 	private final CsvSaveBatchService csvSaveBatchService; // JdbcTemplate batch insert
 	private final DataShareService dataShareService;
@@ -75,8 +76,8 @@ public class CsvSaveService {
 			// Step 1: AI 데이터 분석 준비
 			webSocketService.sendMessage(userId, "AI 분석 데이터 준비 중");
 
-			// ★ DataShareService의 메서드 호출 ★
-			dataShareService.createInitialAiData(fileId);
+//			// ★ DataShareService의 메서드 호출 ★
+//			dataShareService.createInitialAiData(fileId);
 
 			// Step 2: AI 서버로 데이터 전송 및 분석
 			webSocketService.sendMessage(userId, "AI 분석 중 (시간이 걸릴 수 있습니다)");
@@ -84,7 +85,7 @@ public class CsvSaveService {
 
 			// Step 3: 통계 생성
 			webSocketService.sendMessage(userId, "통계 데이터 생성 중");
-			batchTriggerService.analyzeAndSaveAllTrips();
+			statisticsAdminService.processAllStatistics(fileId, userId);
 
 			// Step 4: 완료 알림
 			webSocketService.sendMessage(userId, "모든 처리가 완료되었습니다!");
@@ -103,6 +104,7 @@ public class CsvSaveService {
 
 		Map<String, List<Integer>> errorRows = new HashMap<>(); // ★ 오류 누적 집계용
 
+		
 		// [1] 유저 및 파일 검증 (Null 체크, 형식 체크, 로그인 체크 등)
 		if (user == null)
 			throw new BadRequestException("[오류] : [CsvSaveService] 로그인 정보 없음");
@@ -116,6 +118,8 @@ public class CsvSaveService {
 		if (!file.getOriginalFilename().endsWith(".csv"))
 			throw new FileUploadException("[오류] : [CsvSaveService] CSV 파일 아님");
 
+		
+		
 		// [2] 업로드 파일 정보 저장 (Csv 로그 엔티티)
 		Csv csvLog = Csv.builder().fileName(file.getOriginalFilename()).filePath("c:/MainProject/save_csv")
 				.fileSize(file.getSize()).member(member).build();
@@ -156,11 +160,11 @@ public class CsvSaveService {
 
 			// 1. DB에 이미 있는 PK만 미리 모두 Set으로 뽑아둠
 			Set<Long> existLocationIds = locationRepo.findAllPK(); // location_id만
-			Set<Long> existProductIds = productRepo.findAllPK();
+			Set<String> existProductIds = productRepo.findAllPK();
 			Set<String> existEpcCodes = epcRepo.findAllPK();
 
 			Set<Long> insertedLocations = new HashSet<>(existLocationIds);
-			Set<Long> insertedProducts = new HashSet<>(existProductIds);
+			Set<String> insertedProducts = new HashSet<>(existProductIds);
 			Set<String> insertedEPCs = new HashSet<>(existEpcCodes);
 
 			// [8] chunk 단위로 파일을 읽으며, 파싱/저장/검증 진행
@@ -303,7 +307,7 @@ public class CsvSaveService {
 	// 4. 날짜, boolean, double 등 타입 파싱은 tryParse 메서드에서 오류 감지 및 로그 기록 처리
 	private void parseAndStoreChunk(List<String[]> chunk, Map<String, Integer> colIdx, Csv csvLog,
 			DateTimeFormatter dtf, DateTimeFormatter ymdFormatter, Set<Long> insertedLocations,
-			Set<Long> insertedProducts, Set<String> insertedEPCs, List<Location> locations, List<Product> products,
+			Set<String> insertedProducts, Set<String> insertedEPCs, List<Location> locations, List<Product> products,
 			List<Epc> epcs, List<EventHistory> events, Map<String, List<Integer>> errorRows, int startRowNum) {
 
 		for (int i = 0; i < chunk.size(); i++) {
@@ -311,7 +315,7 @@ public class CsvSaveService {
 			int currentRow = startRowNum + i;
 			try {
 				Long locId = parseLongSafe(getValue(colIdx, row, "location_id"));
-				Long prodId = parseLongSafe(getValue(colIdx, row, "epc_product"));
+				String prodId = getValue(colIdx, row, "epc_product");
 				String epcCode = getValue(colIdx, row, "epc_code");
 
 				// === [추가] 동기 방식과 동일: 필수값 파싱 오류 별도 집계
@@ -331,27 +335,47 @@ public class CsvSaveService {
 				// === [중복 INSERT 방지: DB+파일 모두] ===
 				if (!insertedLocations.contains(locId)) {
 					locations.add(
-							Location.builder().locationId(locId).scanLocation(getValue(colIdx, row, "scan_location"))
+							Location.builder()
+									.locationId(locId)
+									.scanLocation(getValue(colIdx, row, "scan_location"))
 									.latitude(parseDoubleSafe(getValue(colIdx, row, "latitude")))
-									.longitude(parseDoubleSafe(getValue(colIdx, row, "longitude"))).build());
+									.longitude(parseDoubleSafe(getValue(colIdx, row, "longitude")))
+									.operatorId(parseLongSafe(getValue(colIdx, row, "operator_id")))
+									.deviceId(parseLongSafe(getValue(colIdx, row, "device_id")))
+									.build());
+					insertedLocations.add(locId);
 				}
-				insertedLocations.add(locId);
 
 				if (!insertedProducts.contains(prodId)) {
-					products.add(Product.builder().epcProduct(prodId).productName(getValue(colIdx, row, "product_name"))
-							.build());
+					products.add(
+							Product.builder()
+									.epcProduct(prodId)
+									.epcCompany(getValue(colIdx, row, "epc_company"))
+									.productName(getValue(colIdx, row, "product_name"))					
+									.build());
+					insertedProducts.add(prodId);
 				}
-				insertedProducts.add(prodId);
 
 				if (!insertedEPCs.contains(epcCode)) {
-					epcs.add(Epc.builder().epcCode(epcCode).epcHeader(getValue(colIdx, row, "epc_header"))
-							.epcCompany(parseLongSafe(getValue(colIdx, row, "epc_company")))
-							.epcLot(parseLongSafe(getValue(colIdx, row, "epc_lot")))
-							.epcSerial(getValue(colIdx, row, "epc_serial"))
-							.location(Location.builder().locationId(locId).build())
-							.product(Product.builder().epcProduct(prodId).build()).build());
+					epcs.add(
+							Epc.builder()
+								.epcCode(epcCode)
+								.epcHeader(getValue(colIdx, row, "epc_header"))
+								
+								.epcLot(getValue(colIdx, row, "epc_lot"))
+								.epcSerial(getValue(colIdx, row, "epc_serial"))
+								.location(Location.builder().locationId(locId).build())
+								.product(Product.builder().epcProduct(prodId).build())
+								.manufactureDate(tryParseDateTime(getValue(colIdx, row, "manufacture_date"), dtf, errorRows,
+										currentRow, "manufacture_date"))
+								.manufactureDate(tryParseDateTime(getValue(colIdx, row, "manufacture_date"), dtf, errorRows,
+										currentRow, "manufacture_date"))
+								.expiryDate(tryParseDate(getValue(colIdx, row, "expiry_date"), ymdFormatter, errorRows,
+										currentRow, "expiry_date"))
+								.build());
+					
+					insertedEPCs.add(epcCode);
 				}
-				insertedEPCs.add(epcCode);
 
 				// === 날짜 등 필드 파싱 오류 별도 집계 ===
 				EventHistory.EventHistoryBuilder evBuilder = EventHistory.builder()
@@ -359,15 +383,13 @@ public class CsvSaveService {
 						.location(Location.builder().locationId(locId).build())
 						.hubType(getValue(colIdx, row, "hub_type")).eventType(getValue(colIdx, row, "event_type"))
 						.businessOriginal(getValue(colIdx, row, "business_step"))
-						.businessStep(normalizeBusinessStep(getValue(colIdx, row, "business_step"))).csv(csvLog);
+						.businessStep(normalizeBusinessStep(getValue(colIdx, row, "business_step")))
+						.eventType(getValue(colIdx, row, "event_type"))
+						.csv(csvLog);
 
 				// 날짜 파싱
 				evBuilder.eventTime(tryParseDateTime(getValue(colIdx, row, "event_time"), dtf, errorRows, currentRow,
 						"event_time"));
-				evBuilder.manufactureDate(tryParseDateTime(getValue(colIdx, row, "manufacture_date"), dtf, errorRows,
-						currentRow, "manufacture_date"));
-				evBuilder.expiryDate(tryParseDate(getValue(colIdx, row, "expiry_date"), ymdFormatter, errorRows,
-						currentRow, "expiry_date"));
 
 				events.add(evBuilder.build());
 
@@ -378,20 +400,6 @@ public class CsvSaveService {
 		}
 	}
 
-//	private void createInitialAiData(Long fileId) {
-//		log.info("AIData 자동 생성 시작 - fileId: {}", fileId);
-//
-//		List<EventHistory> events = eventHistoryRepo.findByCsv_FileId(fileId);
-//		if (events.isEmpty()) {
-//			log.warn("[오류] : [CsvSaveService] EventHistory가 없음- fileId: {}", fileId);
-//			return;
-//		}
-//		List<AiData> aiDataList = events.stream().map(event -> AiData.builder().eventHistory(event).build()) // @Builder.Default로
-//				.toList();
-//
-//		csvSaveBatchService.saveAiDataBatch(aiDataList); // JdbcTemplate 방식으로 위임
-//		log.info("AiData 초기 생성 완료: {}건", aiDataList.size());
-//	}
 
 //	 ■■■■■■■■■■■■■■■■■■■■■■■■■■■ [ 헬퍼 메서드 ] ■■■■■■■■■■■■■■■■■■■■■■■■
 //	 tryParseDateTime: 문자열을 LocalDateTime으로 안전하게 파싱

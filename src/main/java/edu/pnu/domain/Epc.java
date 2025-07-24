@@ -1,5 +1,8 @@
 package edu.pnu.domain;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -27,19 +30,18 @@ public class Epc {
 	@Id
 	@Column(name ="epc_code")
 	private String epcCode;
+	
 	private String epcHeader;
-	private Long epcCompany;
-	private Long epcLot;
+	
+	private String epcLot;
 	
 	private String epcSerial;
-	
+
 	//N:1 여러개의 epc_code가 하나의 상품에 있을 수 있음.
 	//N:1에서 N은 자식이며, 관계의 주인!
 	@ManyToOne(fetch = FetchType.LAZY) // FK
 	@JoinColumn(name = "location_id")
 	private Location location;
-	
-	
 	
 	//N:1 여러개의 epc_code가 하나의 상품에 있을 수 있음.
 	//N:1에서 N은 자식이며, 관계의 주인!
@@ -47,5 +49,7 @@ public class Epc {
 	@JoinColumn(name = "epc_product")
 	private Product product;
 	
-
+	private LocalDateTime manufactureDate;
+	private LocalDate expiryDate;
+	
 }

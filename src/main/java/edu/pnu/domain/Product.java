@@ -18,8 +18,8 @@ import lombok.ToString;
 @Builder
 public class Product {
 	@Id // 고유한 값임으로 AI 필요 없음
-	private Long epcProduct; // 상품코드
-	
+	private String epcProduct; // 상품코드
+	private String epcCompany; // 제조사 코드
 	private String productName; // 상품명
 	
 

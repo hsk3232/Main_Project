@@ -6,7 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -29,35 +29,13 @@ public class AiData {
 	Long aiId;
 	
 	
-	@OneToOne(fetch = FetchType.LAZY)
+	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name="event_id")
 	private EventHistory eventHistory;
 	
-	@Builder.Default
-	private boolean anomaly = false;
+	private String anomalyType;
+	
+	
 
-	@Builder.Default
-	private boolean jump = false;
-	@Builder.Default
-	private double jumpScore = 0.0;
-
-	@Builder.Default
-	private boolean evtOrderErr = false;
-	@Builder.Default
-	private double evtOrderErrScore = 0.0;
-
-	@Builder.Default
-	private boolean epcFake = false;
-	@Builder.Default
-	private double epcFakeScore = 0.0;
-
-	@Builder.Default
-	private boolean epcDup = false;
-	@Builder.Default
-	private double epcDupScore = 0.0;
-
-	@Builder.Default
-	private boolean locErr = false;
-	@Builder.Default
-	private double locErrScore = 0.0;
+	
 }

@@ -22,4 +22,6 @@ public interface AiDataRepository extends JpaRepository<AiData, Long> {
 		    Long eventId, Pageable pageable);
 	
 	List<AiData> findByEventHistory_EventIdIn(List<Long> eventIds);
+	
+	long countByAnomalyIsTrueAndEventHistory_Csv_FileId(Long fileId);
 }
