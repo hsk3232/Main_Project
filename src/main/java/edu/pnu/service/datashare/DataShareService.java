@@ -261,29 +261,29 @@ public class DataShareService {
 			// [1-1] eventId 목록 추출
 			List<Long> eventIds = dtoList.stream().map(ImportAiDataDTO::getEventId).toList();
 
-			// [1-2] eventId 기준으로 AiData 조회 (EventHistory.eventId 기준!)
-			List<AiData> aiDataList = aiDataRepo.findByEventHistory_EventIdIn(eventIds);
-
-			// [1-3] eventId → AiData 매핑
-			Map<Long, AiData> aiDataMap = new HashMap<>();
-			for (AiData a : aiDataList) {
-				aiDataMap.put(a.getEventHistory().getEventId(), a);
-			}
-
-			// [1-4] DTO 값을 엔티티에 반영 (null일 경우 기본값 사용)
-			for (ImportAiDataDTO dto : dtoList) {
-				AiData entity = aiDataMap.get(dto.getEventId());
+//			// [1-2] eventId 기준으로 AiData 조회 (EventHistory.eventId 기준!)
+//			List<AiData> aiDataList = aiDataRepo.findByEventHistory_EventIdIn(eventIds);
+//
+//			// [1-3] eventId → AiData 매핑
+//			Map<Long, AiData> aiDataMap = new HashMap<>();
+//			for (AiData a : aiDataList) {
+//				aiDataMap.put(a.getEventHistory().getEventId(), a);
+//			}
+//
+//			// [1-4] DTO 값을 엔티티에 반영 (null일 경우 기본값 사용)
+//			for (ImportAiDataDTO dto : dtoList) {
+//				AiData entity = aiDataMap.get(dto.getEventId());
+//			
+//				entity.setAnomalyType(true); // 분석된 이상치는 무조건 true 처리
+//
+//
+//
+//			// [1-5] 일괄 저장
+//			aiDataRepo.saveAll(aiDataList);
+//			log.info("[완료] : [DataShareService] AiData 이상치 반영 완료 ({}건)", aiDataList.size());
 			
-				entity.setAnomaly(true); // 분석된 이상치는 무조건 true 처리
-
-
-
-			// [1-5] 일괄 저장
-			aiDataRepo.saveAll(aiDataList);
-			log.info("[완료] : [DataShareService] AiData 이상치 반영 완료 ({}건)", aiDataList.size());
+		
 		}
-
-
 	}
 
 }
